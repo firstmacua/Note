@@ -83,7 +83,17 @@ export const NoteCard: React.FC<NoteCardProps> = ({
   };
 
   const translatedCategory =
-    (t.categories as Record<string, string>)[note.category] || note.category;
+    (t.categories as Record<string, string>)[note.category] || note.category || (currentLang === 'uk' ? 'Загальне' : 'General');
+
+  // Translate author name if it's default 'Гость' / 'Гість' / 'Guest'
+  const displayAuthor = (() => {
+    if (!note.authorName) return null;
+    const lower = note.authorName.trim().toLowerCase();
+    if (lower === 'гость' || lower === 'гість' || lower === 'guest') {
+      return t.cardGuest;
+    }
+    return note.authorName;
+  })();
 
   return (
     <article
@@ -106,10 +116,10 @@ export const NoteCard: React.FC<NoteCardProps> = ({
                 </span>
               ) : null}
 
-              {note.authorName && (
+              {displayAuthor && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-medium text-neutral-500 bg-neutral-100 px-1.5 py-0.5 rounded truncate max-w-[140px]">
                   <UserIcon className="w-2.5 h-2.5 text-neutral-400" />
-                  {note.authorName}
+                  {displayAuthor}
                 </span>
               )}
             </div>

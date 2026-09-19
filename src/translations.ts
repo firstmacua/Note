@@ -82,6 +82,16 @@ export interface Translations {
     'Ідеї': string;
     'Особисте': string;
     'Покупки': string;
+    'Общее'?: string;
+    'Работа'?: string;
+    'Идеи'?: string;
+    'Личное'?: string;
+    'General'?: string;
+    'Work'?: string;
+    'Ideas'?: string;
+    'Personal'?: string;
+    'Shopping'?: string;
+    [key: string]: string | undefined;
   };
 }
 
@@ -180,6 +190,15 @@ export const translations: Record<Language, Translations> = {
       'Ідеї': 'Ідеї',
       'Особисте': 'Особисте',
       'Покупки': 'Покупки',
+      'Общее': 'Загальне',
+      'Работа': 'Робота',
+      'Идеи': 'Ідеї',
+      'Личное': 'Особисте',
+      'General': 'Загальне',
+      'Work': 'Робота',
+      'Ideas': 'Ідеї',
+      'Personal': 'Особисте',
+      'Shopping': 'Покупки',
     },
   },
   en: {
@@ -261,6 +280,15 @@ export const translations: Record<Language, Translations> = {
       'Ідеї': 'Ideas',
       'Особисте': 'Personal',
       'Покупки': 'Shopping',
+      'Общее': 'General',
+      'Работа': 'Work',
+      'Идеи': 'Ideas',
+      'Личное': 'Personal',
+      'General': 'General',
+      'Work': 'Work',
+      'Ideas': 'Ideas',
+      'Personal': 'Personal',
+      'Shopping': 'Shopping',
     },
   },
 };
