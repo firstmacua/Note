@@ -1,19 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Check, X, Pin } from 'lucide-react';
+import { Plus, Check, X, Pin, Globe, Lock } from 'lucide-react';
 import { Note, NoteCategory } from '../types';
 import { CATEGORIES } from '../data';
 
 interface NoteEditorProps {
   initialNote?: Note | null;
-  onSave: (noteData: { title: string; content: string; category: NoteCategory; isPinned: boolean }) => void;
+  defaultIsPublic?: boolean;
+  onSave: (noteData: {
+    title: string;
+    content: string;
+    category: NoteCategory;
+    isPinned: boolean;
+    isPublic: boolean;
+    authorName: string;
+  }) => void;
   onCancel?: () => void;
 }
 
-export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onCancel }) => {
+export const NoteEditor: React.FC<NoteEditorProps> = ({
+  initialNote,
+  defaultIsPublic = false,
+  onSave,
+  onCancel,
+}) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [category, setCategory] = useState<NoteCategory>('Общее');
   const [isPinned, setIsPinned] = useState(false);
+  const [isPublic, setIsPublic] = useState(defaultIsPublic);
+  const [authorName, setAuthorName] = useState(() => {
+    return localStorage.getItem('guest_author_name') || '';
+  });
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -22,15 +39,18 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
       setContent(initialNote.content);
       setCategory(initialNote.category);
       setIsPinned(initialNote.isPinned);
+      setIsPublic(Boolean(initialNote.isPublic));
+      setAuthorName(initialNote.authorName || '');
       setError('');
     } else {
       setTitle('');
       setContent('');
       setCategory('Общее');
       setIsPinned(false);
+      setIsPublic(defaultIsPublic);
       setError('');
     }
-  }, [initialNote]);
+  }, [initialNote, defaultIsPublic]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,11 +59,18 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
       return;
     }
 
+    const trimmedAuthor = authorName.trim();
+    if (trimmedAuthor) {
+      localStorage.setItem('guest_author_name', trimmedAuthor);
+    }
+
     onSave({
       title: title.trim() || 'Без названия',
       content: content.trim(),
       category,
       isPinned,
+      isPublic,
+      authorName: trimmedAuthor || 'Гость',
     });
 
     if (!initialNote) {
@@ -105,6 +132,49 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
         </p>
       )}
 
+      {/* Guest author name field & Public/Private toggle */}
+      <div className="py-2.5 px-3 mb-3 rounded-lg bg-neutral-50 border border-neutral-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <button
+            type="button"
+            id="editor-visibility-toggle"
+            onClick={() => setIsPublic(!isPublic)}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md font-medium transition-colors ${
+              isPublic
+                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                : 'bg-neutral-200 text-neutral-700'
+            }`}
+          >
+            {isPublic ? (
+              <>
+                <Globe className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Публичная (видят все гости)</span>
+              </>
+            ) : (
+              <>
+                <Lock className="w-3.5 h-3.5 text-neutral-500" />
+                <span>Личная (только для меня)</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {isPublic && (
+          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+            <span className="text-neutral-500 whitespace-nowrap">Ваше имя / подпись:</span>
+            <input
+              type="text"
+              id="guest-author-input"
+              value={authorName}
+              onChange={(e) => setAuthorName(e.target.value)}
+              placeholder="Гость..."
+              maxLength={30}
+              className="bg-white px-2 py-1 rounded border border-neutral-300 text-xs text-neutral-900 outline-none focus:border-neutral-600 w-28 sm:w-36"
+            />
+          </div>
+        )}
+      </div>
+
       <div className="pt-3 border-t border-neutral-100 flex flex-wrap items-center justify-between gap-3">
         {/* Category selector */}
         <div id="note-category-picker" className="flex items-center gap-1.5 flex-wrap">
@@ -155,7 +225,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
             ) : (
               <>
                 <Plus className="w-3.5 h-3.5" />
-                Записать заметку
+                {isPublic ? 'Опубликовать для всех' : 'Записать заметку'}
               </>
             )}
           </button>

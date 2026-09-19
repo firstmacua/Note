@@ -6,10 +6,19 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
       
-      // User notes subcollection rule
+      // User private notes subcollection
       match /notes/{noteId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
+    }
+    
+    // Public notes collection (shared wall / guest book):
+    // Anyone (guests and logged in users) can read and write public notes!
+    match /public_notes/{noteId} {
+      allow read: if true;
+      allow create: if request.resource.data.title is string
+                    && request.resource.data.content is string;
+      allow update, delete: if true;
     }
     
     // Default deny all other paths

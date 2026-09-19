@@ -8,6 +8,12 @@ export interface Note {
   isPinned: boolean;
   createdAt: number;
   updatedAt: number;
+  // Guest and public visibility attributes
+  isPublic?: boolean;
+  authorName?: string;
+  authorId?: string;
 }
 
 export type CategoryFilter = 'Все' | NoteCategory;
+
+export type NotesTab = 'public' | 'my';

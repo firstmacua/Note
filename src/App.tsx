@@ -4,13 +4,27 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { Search, StickyNote, X, Plus, Pin, FileText, Share2, Inbox, Check } from 'lucide-react';
-import { Note, NoteCategory, CategoryFilter } from './types';
+import { 
+  Search, 
+  StickyNote, 
+  X, 
+  Plus, 
+  Pin, 
+  FileText, 
+  Share2, 
+  Inbox, 
+  Check, 
+  Globe, 
+  Lock,
+  Users
+} from 'lucide-react';
+import { Note, NoteCategory, CategoryFilter, NotesTab } from './types';
 import { CATEGORIES, INITIAL_NOTES } from './data';
 import { NoteEditor } from './components/NoteEditor';
 import { NoteCard } from './components/NoteCard';
 import { ShareModal } from './components/ShareModal';
 import { CloudSyncBar } from './components/CloudSyncBar';
+import { CloudErrorBanner } from './components/CloudErrorBanner';
 import { useCloudNotes } from './hooks/useCloudNotes';
 
 const STORAGE_KEY = 'quick_notes_storage_v1';
@@ -28,29 +42,30 @@ export default function App() {
     return INITIAL_NOTES;
   });
 
-  // Cloud sync hook with Firebase Realtime Firestore & Google Auth
+  // Active tab: 'public' (Shared guest wall - visible to all) or 'my' (My private notes)
+  const [activeTab, setActiveTab] = useState<NotesTab>('public');
+
+  // Cloud hook handles both PUBLIC guest wall and PRIVATE user notes
   const {
     currentUser,
     isAuthLoading,
     cloudNotes,
+    publicNotes,
+    isPublicLoading,
     isSyncing,
     syncError,
+    setSyncError,
     signInWithGoogle,
     signOut,
-    saveCloudNote,
-    deleteCloudNote,
+    saveNote,
+    deleteNote,
   } = useCloudNotes(localNotes);
 
-  // Active notes are from cloud if logged in, otherwise local
-  const notes = cloudNotes !== null ? cloudNotes : localNotes;
+  // Private notes list (from cloud when logged in, or local when guest)
+  const myNotes = cloudNotes !== null ? cloudNotes : localNotes;
 
-  const setNotes = (updater: Note[] | ((prev: Note[]) => Note[])) => {
-    if (typeof updater === 'function') {
-      setLocalNotes((prev) => updater(prev));
-    } else {
-      setLocalNotes(updater);
-    }
-  };
+  // Selected notes depending on tab
+  const currentNotesList = activeTab === 'public' ? publicNotes : myNotes;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>('Все');
@@ -98,15 +113,17 @@ export default function App() {
       content: receivedNote.content,
       category: receivedNote.category,
       isPinned: true,
+      isPublic: false,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
-    setNotes((prev) => [newNote, ...prev]);
+    setLocalNotes((prev) => [newNote, ...prev]);
+    saveNote(newNote);
+    setActiveTab('my');
     setReceivedAccepted(true);
     setTimeout(() => {
       setReceivedNote(null);
       setReceivedAccepted(false);
-      // Clean query parameter without page reload
       try {
         const url = new URL(window.location.href);
         url.searchParams.delete('shared');
@@ -128,20 +145,22 @@ export default function App() {
     }
   };
 
-  // Sync to localStorage
+  // Sync local notes to localStorage
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(localNotes));
     } catch {
       // Ignore storage errors
     }
-  }, [notes]);
+  }, [localNotes]);
 
   const handleCreateNote = (data: {
     title: string;
     content: string;
     category: NoteCategory;
     isPinned: boolean;
+    isPublic: boolean;
+    authorName: string;
   }) => {
     const newNote: Note = {
       id: `note-${Date.now()}`,
@@ -149,11 +168,23 @@ export default function App() {
       content: data.content,
       category: data.category,
       isPinned: data.isPinned,
+      isPublic: data.isPublic,
+      authorName: data.authorName,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
-    setNotes((prev) => [newNote, ...prev]);
-    saveCloudNote(newNote);
+
+    if (data.isPublic) {
+      // Public notes go directly to Firestore shared wall
+      saveNote(newNote);
+      setActiveTab('public');
+    } else {
+      // Private note
+      setLocalNotes((prev) => [newNote, ...prev]);
+      saveNote(newNote);
+      setActiveTab('my');
+    }
+
     setIsEditorExpanded(false);
   };
 
@@ -162,6 +193,8 @@ export default function App() {
     content: string;
     category: NoteCategory;
     isPinned: boolean;
+    isPublic: boolean;
+    authorName: string;
   }) => {
     if (!editingNote) return;
     const updated: Note = {
@@ -170,24 +203,45 @@ export default function App() {
       content: data.content,
       category: data.category,
       isPinned: data.isPinned,
+      isPublic: data.isPublic,
+      authorName: data.authorName,
       updatedAt: Date.now(),
     };
-    setNotes((prev) => prev.map((n) => (n.id === editingNote.id ? updated : n)));
-    saveCloudNote(updated);
+
+    if (editingNote.isPublic) {
+      saveNote(updated);
+    } else {
+      setLocalNotes((prev) => prev.map((n) => (n.id === editingNote.id ? updated : n)));
+      saveNote(updated);
+    }
+
     setEditingNote(null);
   };
 
   const handleTogglePin = (id: string) => {
-    const target = notes.find((n) => n.id === id);
+    const target = currentNotesList.find((n) => n.id === id);
     if (!target) return;
     const updated: Note = { ...target, isPinned: !target.isPinned, updatedAt: Date.now() };
-    setNotes((prev) => prev.map((n) => (n.id === id ? updated : n)));
-    saveCloudNote(updated);
+
+    if (target.isPublic) {
+      saveNote(updated);
+    } else {
+      setLocalNotes((prev) => prev.map((n) => (n.id === id ? updated : n)));
+      saveNote(updated);
+    }
   };
 
   const handleDeleteNote = (id: string) => {
-    setNotes((prev) => prev.filter((n) => n.id !== id));
-    deleteCloudNote(id);
+    const target = currentNotesList.find((n) => n.id === id);
+    const isPublic = target ? target.isPublic : activeTab === 'public';
+
+    if (isPublic) {
+      deleteNote(id, true);
+    } else {
+      setLocalNotes((prev) => prev.filter((n) => n.id !== id));
+      deleteNote(id, false);
+    }
+
     if (editingNote?.id === id) {
       setEditingNote(null);
     }
@@ -196,14 +250,15 @@ export default function App() {
   // Filter and sort notes
   const filteredNotes = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    return notes
+    return currentNotesList
       .filter((note) => {
         const matchesCategory =
           activeCategory === 'Все' || note.category === activeCategory;
         const matchesQuery =
           !query ||
           note.title.toLowerCase().includes(query) ||
-          note.content.toLowerCase().includes(query);
+          note.content.toLowerCase().includes(query) ||
+          (note.authorName && note.authorName.toLowerCase().includes(query));
         return matchesCategory && matchesQuery;
       })
       .sort((a, b) => {
@@ -213,9 +268,9 @@ export default function App() {
         // Then by updated/created date descending
         return (b.updatedAt || b.createdAt) - (a.updatedAt || a.createdAt);
       });
-  }, [notes, searchQuery, activeCategory]);
+  }, [currentNotesList, searchQuery, activeCategory]);
 
-  const pinnedCount = useMemo(() => notes.filter((n) => n.isPinned).length, [notes]);
+  const pinnedCount = useMemo(() => currentNotesList.filter((n) => n.isPinned).length, [currentNotesList]);
 
   return (
     <div id="notes-app-root" className="min-h-screen bg-neutral-50 text-neutral-900 antialiased">
@@ -233,11 +288,15 @@ export default function App() {
               <StickyNote className="w-5 h-5" />
             </div>
             <div>
-              <h1 id="app-heading" className="text-lg font-bold tracking-tight text-neutral-900">
+              <h1 id="app-heading" className="text-lg font-bold tracking-tight text-neutral-900 flex items-center gap-2">
                 Заметки
+                <span className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 hidden sm:inline-flex items-center gap-1">
+                  <Users className="w-3 h-3" /> Общая стена
+                </span>
               </h1>
               <p id="app-subheading" className="text-xs text-neutral-500">
-                {notes.length} {notes.length === 1 ? 'заметка' : notes.length > 4 ? 'заметок' : 'заметки'}
+                {currentNotesList.length}{' '}
+                {currentNotesList.length === 1 ? 'заметка' : currentNotesList.length > 4 ? 'заметок' : 'заметки'}
                 {pinnedCount > 0 && ` • ${pinnedCount} закреплено`}
               </p>
             </div>
@@ -271,6 +330,56 @@ export default function App() {
 
       {/* Main Content */}
       <main id="main-content" className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        {/* Error banner for cloud sync diagnostics */}
+        <CloudErrorBanner error={syncError} onDismiss={() => setSyncError(null)} />
+
+        {/* Tab Navigation: Public notes vs My private notes */}
+        <section id="tabs-navigation" className="flex items-center justify-between gap-3 border-b border-neutral-200 pb-3">
+          <div className="flex items-center gap-2 bg-neutral-200/70 p-1 rounded-xl">
+            <button
+              id="tab-public-notes"
+              type="button"
+              onClick={() => setActiveTab('public')}
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                activeTab === 'public'
+                  ? 'bg-white text-neutral-900 shadow-xs'
+                  : 'text-neutral-600 hover:text-neutral-900'
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Общие заметки гостей</span>
+              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded-full">
+                {publicNotes.length}
+              </span>
+            </button>
+
+            <button
+              id="tab-my-notes"
+              type="button"
+              onClick={() => setActiveTab('my')}
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                activeTab === 'my'
+                  ? 'bg-white text-neutral-900 shadow-xs'
+                  : 'text-neutral-600 hover:text-neutral-900'
+              }`}
+            >
+              <Lock className="w-3.5 h-3.5 text-neutral-500" />
+              <span>Мои личные</span>
+              <span className="text-[10px] bg-neutral-200 text-neutral-700 font-bold px-1.5 py-0.2 rounded-full">
+                {myNotes.length}
+              </span>
+            </button>
+          </div>
+
+          <div className="text-xs text-neutral-500 hidden sm:block">
+            {activeTab === 'public'
+              ? 'Любой гость может написать заметку, и ее сразу увидят все'
+              : currentUser
+              ? 'Синхронизируются только в вашем Google-аккаунте'
+              : 'Сохраняются только в этом браузере'}
+          </div>
+        </section>
+
         {/* Banner when a note was received from a friend via link */}
         {receivedNote && (
           <section
@@ -336,7 +445,11 @@ export default function App() {
           <section id="editor-section" className="space-y-2">
             <div className="flex items-center justify-between">
               <h2 id="editor-section-title" className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
-                {editingNote ? 'Редактирование заметки' : 'Новая заметка'}
+                {editingNote
+                  ? 'Редактирование заметки'
+                  : activeTab === 'public'
+                  ? 'Новая публичная заметка (увидят все)'
+                  : 'Новая личная заметка'}
               </h2>
               <button
                 id="close-editor-btn"
@@ -353,6 +466,7 @@ export default function App() {
             </div>
             <NoteEditor
               initialNote={editingNote}
+              defaultIsPublic={activeTab === 'public'}
               onSave={editingNote ? handleUpdateNote : handleCreateNote}
               onCancel={() => {
                 setIsEditorExpanded(false);
@@ -378,7 +492,7 @@ export default function App() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Поиск по заметкам..."
+              placeholder={activeTab === 'public' ? "Поиск по общим заметкам и авторам..." : "Поиск по личным заметкам..."}
               className="w-full text-xs text-neutral-900 placeholder:text-neutral-400 bg-transparent border-none outline-none"
             />
             {searchQuery && (
@@ -416,7 +530,7 @@ export default function App() {
           </div>
         </section>
 
-        {/* Pinned section indicator if applicable */}
+        {/* Indicator */}
         {filteredNotes.length > 0 && (
           <div className="flex items-center justify-between text-xs text-neutral-500 pt-1">
             <span>
@@ -426,6 +540,7 @@ export default function App() {
                 : filteredNotes.length > 4
                 ? 'заметок'
                 : 'заметки'}
+              {activeTab === 'public' && ' (от всех гостей)'}
             </span>
             {searchQuery && (
               <button
@@ -467,15 +582,21 @@ export default function App() {
             className="bg-white border border-neutral-200 rounded-xl p-12 text-center flex flex-col items-center justify-center max-w-md mx-auto"
           >
             <div className="w-12 h-12 rounded-full bg-neutral-100 text-neutral-400 flex items-center justify-center mb-4">
-              <FileText className="w-6 h-6" />
+              {activeTab === 'public' ? <Globe className="w-6 h-6 text-emerald-600" /> : <FileText className="w-6 h-6" />}
             </div>
             <h3 id="empty-state-title" className="text-base font-semibold text-neutral-900 mb-1">
-              {searchQuery ? 'Заметки не найдены' : 'Список заметок пуст'}
+              {searchQuery
+                ? 'Заметки не найдены'
+                : activeTab === 'public'
+                ? 'На общей стене пока нет заметок'
+                : 'Список личных заметок пуст'}
             </h3>
             <p id="empty-state-desc" className="text-xs text-neutral-500 mb-5 leading-relaxed">
               {searchQuery
                 ? `По запросу «${searchQuery}» ничего не найдено. Попробуйте изменить формулировку.`
-                : 'Создайте свою первую запись, нажав на кнопку ниже.'}
+                : activeTab === 'public'
+                ? 'Будьте первым гостем! Напишите заметку, и её увидят все посетители сайта в реальном времени.'
+                : 'Создайте свою личную приватную запись, нажав на кнопку ниже.'}
             </p>
             {searchQuery ? (
               <button
@@ -494,10 +615,10 @@ export default function App() {
                 id="empty-create-btn"
                 type="button"
                 onClick={() => setIsEditorExpanded(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-medium rounded-lg transition-colors whitespace-nowrap"
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-medium rounded-lg transition-colors shadow-xs whitespace-nowrap"
               >
                 <Plus className="w-4 h-4" />
-                Создать первую заметку
+                {activeTab === 'public' ? 'Написать для всех' : 'Создать первую заметку'}
               </button>
             )}
           </div>

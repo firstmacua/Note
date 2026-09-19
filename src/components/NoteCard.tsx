@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pin, Pencil, Trash2, Copy, Check, Share2 } from 'lucide-react';
+import { Pin, Pencil, Trash2, Copy, Check, Share2, Globe, User as UserIcon } from 'lucide-react';
 import { Note } from '../types';
 
 interface NoteCardProps {
@@ -73,14 +73,32 @@ export const NoteCard: React.FC<NoteCardProps> = ({
       }`}
     >
       <div>
-        {/* Header with Title & Pin */}
+        {/* Header with Title, Guest Author Badge & Pin */}
         <div className="flex items-start justify-between gap-2 mb-2">
-          <h3
-            id={`note-title-${note.id}`}
-            className="text-base font-semibold text-neutral-900 tracking-tight leading-snug break-words"
-          >
-            {note.title}
-          </h3>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 mb-1">
+              {note.isPublic ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+                  <Globe className="w-2.5 h-2.5" />
+                  Все видят
+                </span>
+              ) : null}
+
+              {note.authorName && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-neutral-500 bg-neutral-100 px-1.5 py-0.5 rounded truncate max-w-[140px]">
+                  <UserIcon className="w-2.5 h-2.5 text-neutral-400" />
+                  {note.authorName}
+                </span>
+              )}
+            </div>
+
+            <h3
+              id={`note-title-${note.id}`}
+              className="text-base font-semibold text-neutral-900 tracking-tight leading-snug break-words"
+            >
+              {note.title}
+            </h3>
+          </div>
 
           <button
             id={`note-pin-btn-${note.id}`}
@@ -132,7 +150,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({
             id={`note-share-btn-${note.id}`}
             type="button"
             onClick={() => onShare(note)}
-            title="Отправить другу"
+            title="Отправить ссылку другу"
             className="p-1.5 text-neutral-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
           >
             <Share2 className="w-3.5 h-3.5" />

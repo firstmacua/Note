@@ -14,21 +14,21 @@
     },
     "Note": {
       "title": "Note",
-      "description": "User note with cross-device sync",
+      "description": "User or public guest note",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string" },
         "title": { "type": "string" },
         "content": { "type": "string" },
-        "color": { "type": "string" },
         "category": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorId": { "type": "string" },
         "isPinned": { "type": "boolean" },
-        "isArchived": { "type": "boolean" },
-        "createdAt": { "type": "string" },
-        "updatedAt": { "type": "string" }
+        "isPublic": { "type": "boolean" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
       },
-      "required": ["id", "userId", "title", "content", "updatedAt"]
+      "required": ["id", "title", "content", "updatedAt"]
     }
   },
   "firestore": {
@@ -38,7 +38,11 @@
     },
     "/users/{userId}/notes/{noteId}": {
       "schema": "Note",
-      "description": "User's private notes synced across devices"
+      "description": "User's private notes"
+    },
+    "/public_notes/{noteId}": {
+      "schema": "Note",
+      "description": "Public notes visible to everyone and editable/creatable by guests"
     }
   }
 }
