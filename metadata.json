@@ -1,6 +1,6 @@
 {
   "name": "Заметки",
-  "description": "Приложение для создания, сохранения заметок и отправки их друзьям.",
+  "description": "Приложение для создания, сохранения заметок с кросс-девайсной облачной синхронизацией и отправкой друзьям.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -10,11 +10,13 @@ import { CATEGORIES, INITIAL_NOTES } from './data';
 import { NoteEditor } from './components/NoteEditor';
 import { NoteCard } from './components/NoteCard';
 import { ShareModal } from './components/ShareModal';
+import { CloudSyncBar } from './components/CloudSyncBar';
+import { useCloudNotes } from './hooks/useCloudNotes';
 
 const STORAGE_KEY = 'quick_notes_storage_v1';
 
 export default function App() {
-  const [notes, setNotes] = useState<Note[]>(() => {
+  const [localNotes, setLocalNotes] = useState<Note[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -25,6 +27,30 @@ export default function App() {
     }
     return INITIAL_NOTES;
   });
+
+  // Cloud sync hook with Firebase Realtime Firestore & Google Auth
+  const {
+    currentUser,
+    isAuthLoading,
+    cloudNotes,
+    isSyncing,
+    syncError,
+    signInWithGoogle,
+    signOut,
+    saveCloudNote,
+    deleteCloudNote,
+  } = useCloudNotes(localNotes);
+
+  // Active notes are from cloud if logged in, otherwise local
+  const notes = cloudNotes !== null ? cloudNotes : localNotes;
+
+  const setNotes = (updater: Note[] | ((prev: Note[]) => Note[])) => {
+    if (typeof updater === 'function') {
+      setLocalNotes((prev) => updater(prev));
+    } else {
+      setLocalNotes(updater);
+    }
+  };
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>('Все');
@@ -127,6 +153,7 @@ export default function App() {
       updatedAt: Date.now(),
     };
     setNotes((prev) => [newNote, ...prev]);
+    saveCloudNote(newNote);
     setIsEditorExpanded(false);
   };
 
@@ -137,31 +164,30 @@ export default function App() {
     isPinned: boolean;
   }) => {
     if (!editingNote) return;
-    setNotes((prev) =>
-      prev.map((n) =>
-        n.id === editingNote.id
-          ? {
-              ...n,
-              title: data.title,
-              content: data.content,
-              category: data.category,
-              isPinned: data.isPinned,
-              updatedAt: Date.now(),
-            }
-          : n
-      )
-    );
+    const updated: Note = {
+      ...editingNote,
+      title: data.title,
+      content: data.content,
+      category: data.category,
+      isPinned: data.isPinned,
+      updatedAt: Date.now(),
+    };
+    setNotes((prev) => prev.map((n) => (n.id === editingNote.id ? updated : n)));
+    saveCloudNote(updated);
     setEditingNote(null);
   };
 
   const handleTogglePin = (id: string) => {
-    setNotes((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isPinned: !n.isPinned } : n))
-    );
+    const target = notes.find((n) => n.id === id);
+    if (!target) return;
+    const updated: Note = { ...target, isPinned: !target.isPinned, updatedAt: Date.now() };
+    setNotes((prev) => prev.map((n) => (n.id === id ? updated : n)));
+    saveCloudNote(updated);
   };
 
   const handleDeleteNote = (id: string) => {
     setNotes((prev) => prev.filter((n) => n.id !== id));
+    deleteCloudNote(id);
     if (editingNote?.id === id) {
       setEditingNote(null);
     }
@@ -217,18 +243,29 @@ export default function App() {
             </div>
           </div>
 
-          <button
-            id="open-editor-btn"
-            type="button"
-            onClick={() => {
-              setEditingNote(null);
-              setIsEditorExpanded(true);
-            }}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-medium rounded-lg transition-colors shadow-xs whitespace-nowrap"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Новая заметка</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <CloudSyncBar
+              currentUser={currentUser}
+              isAuthLoading={isAuthLoading}
+              isSyncing={isSyncing}
+              syncError={syncError}
+              onSignIn={signInWithGoogle}
+              onSignOut={signOut}
+            />
+
+            <button
+              id="open-editor-btn"
+              type="button"
+              onClick={() => {
+                setEditingNote(null);
+                setIsEditorExpanded(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-medium rounded-lg transition-colors shadow-xs whitespace-nowrap"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Новая заметка</span>
+            </button>
+          </div>
         </div>
       </header>
 
