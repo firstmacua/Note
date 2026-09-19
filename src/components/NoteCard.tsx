@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { Pin, Pencil, Trash2, Copy, Check, Share2, Globe, User as UserIcon } from 'lucide-react';
 import { Note } from '../types';
+import { Translations, Language } from '../translations';
 
 interface NoteCardProps {
   note: Note;
+  t: Translations;
+  currentLang: Language;
   onTogglePin: (id: string) => void;
   onEdit: (note: Note) => void;
   onDelete: (id: string) => void;
@@ -12,6 +15,8 @@ interface NoteCardProps {
 
 export const NoteCard: React.FC<NoteCardProps> = ({
   note,
+  t,
+  currentLang,
   onTogglePin,
   onEdit,
   onDelete,
@@ -43,27 +48,31 @@ export const NoteCard: React.FC<NoteCardProps> = ({
 
   const formatDate = (timestamp?: number) => {
     if (!timestamp || isNaN(Number(timestamp))) {
-      return 'Только что';
+      return t.cardJustNow;
     }
     try {
       const date = new Date(Number(timestamp));
-      return date.toLocaleDateString('ru-RU', {
+      const locale = currentLang === 'uk' ? 'uk-UA' : 'en-US';
+      return date.toLocaleDateString(locale, {
         day: 'numeric',
         month: 'short',
         hour: '2-digit',
         minute: '2-digit',
       });
     } catch {
-      return 'Только что';
+      return t.cardJustNow;
     }
   };
 
   const getCategoryBadgeClass = (cat?: string) => {
     switch (cat) {
+      case 'Робота':
       case 'Работа':
         return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'Ідеї':
       case 'Идеи':
         return 'bg-purple-50 text-purple-700 border-purple-200';
+      case 'Особисте':
       case 'Личное':
         return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       case 'Покупки':
@@ -72,6 +81,9 @@ export const NoteCard: React.FC<NoteCardProps> = ({
         return 'bg-neutral-100 text-neutral-700 border-neutral-200';
     }
   };
+
+  const translatedCategory =
+    (t.categories as Record<string, string>)[note.category] || note.category;
 
   return (
     <article
@@ -90,7 +102,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({
               {note.isPublic ? (
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
                   <Globe className="w-2.5 h-2.5" />
-                  Все видят
+                  {t.cardPublicBadge}
                 </span>
               ) : null}
 
@@ -106,7 +118,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({
               id={`note-title-${note.id}`}
               className="text-base font-semibold text-neutral-900 tracking-tight leading-snug break-words"
             >
-              {note.title || 'Без названия'}
+              {note.title || (currentLang === 'uk' ? 'Без назви' : 'Untitled')}
             </h3>
           </div>
 
@@ -114,7 +126,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({
             id={`note-pin-btn-${note.id}`}
             type="button"
             onClick={() => onTogglePin(note.id)}
-            title={note.isPinned ? 'Открепить заметку' : 'Закрепить заметку'}
+            title={note.isPinned ? t.cardUnpin : t.cardPin}
             className={`p-1.5 rounded-md transition-colors shrink-0 ${
               note.isPinned
                 ? 'text-amber-600 bg-amber-50 hover:bg-amber-100'
@@ -145,7 +157,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({
               note.category
             )}`}
           >
-            {note.category || 'Общее'}
+            {translatedCategory || (currentLang === 'uk' ? 'Загальне' : 'General')}
           </span>
           <time
             id={`note-date-${note.id}`}
@@ -160,7 +172,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({
             id={`note-share-btn-${note.id}`}
             type="button"
             onClick={() => onShare(note)}
-            title="Отправить ссылку другу"
+            title={t.cardShare}
             className="p-1.5 text-neutral-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
           >
             <Share2 className="w-3.5 h-3.5" />
@@ -170,7 +182,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({
             id={`note-copy-btn-${note.id}`}
             type="button"
             onClick={handleCopy}
-            title="Скопировать текст"
+            title={copied ? t.cardCopied : t.cardCopy}
             className="p-1.5 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-md transition-colors"
           >
             {copied ? (
@@ -184,7 +196,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({
             id={`note-edit-btn-${note.id}`}
             type="button"
             onClick={() => onEdit(note)}
-            title="Редактировать заметку"
+            title={t.cardEdit}
             className="p-1.5 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-md transition-colors"
           >
             <Pencil className="w-3.5 h-3.5" />
@@ -194,7 +206,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({
             id={`note-delete-btn-${note.id}`}
             type="button"
             onClick={() => onDelete(note.id)}
-            title="Удалить заметку"
+            title={t.cardDelete}
             className="p-1.5 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
           >
             <Trash2 className="w-3.5 h-3.5" />

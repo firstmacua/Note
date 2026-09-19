@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Check, X, Pin, Globe, Lock } from 'lucide-react';
 import { Note, NoteCategory } from '../types';
 import { CATEGORIES } from '../data';
+import { Translations } from '../translations';
 
 interface NoteEditorProps {
   initialNote?: Note | null;
   defaultIsPublic?: boolean;
+  t: Translations;
   onSave: (noteData: {
     title: string;
     content: string;
@@ -20,12 +22,13 @@ interface NoteEditorProps {
 export const NoteEditor: React.FC<NoteEditorProps> = ({
   initialNote,
   defaultIsPublic = false,
+  t,
   onSave,
   onCancel,
 }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [category, setCategory] = useState<NoteCategory>('Общее');
+  const [category, setCategory] = useState<NoteCategory>('Загальне');
   const [isPinned, setIsPinned] = useState(false);
   const [isPublic, setIsPublic] = useState(defaultIsPublic);
   const [authorName, setAuthorName] = useState(() => {
@@ -37,7 +40,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     if (initialNote) {
       setTitle(initialNote.title);
       setContent(initialNote.content);
-      setCategory(initialNote.category);
+      setCategory((initialNote.category as NoteCategory) || 'Загальне');
       setIsPinned(initialNote.isPinned);
       setIsPublic(Boolean(initialNote.isPublic));
       setAuthorName(initialNote.authorName || '');
@@ -45,7 +48,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     } else {
       setTitle('');
       setContent('');
-      setCategory('Общее');
+      setCategory('Загальне');
       setIsPinned(false);
       setIsPublic(defaultIsPublic);
       setError('');
@@ -55,7 +58,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim() && !title.trim()) {
-      setError('Пожалуйста, введите текст или заголовок заметки');
+      setError(t.editorErrorRequired);
       return;
     }
 
@@ -65,12 +68,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     }
 
     onSave({
-      title: title.trim() || 'Без названия',
+      title: title.trim() || (t.appName === 'MikeNote' ? (t.allCategories === 'Всі' ? 'Без назви' : 'Untitled') : 'Untitled'),
       content: content.trim(),
       category,
       isPinned,
       isPublic,
-      authorName: trimmedAuthor || 'Гость',
+      authorName: trimmedAuthor || t.cardGuest,
     });
 
     if (!initialNote) {
@@ -96,14 +99,14 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
             setTitle(e.target.value);
             if (error) setError('');
           }}
-          placeholder="Заголовок заметки..."
+          placeholder={t.editorTitlePlaceholder}
           className="w-full text-base font-medium text-neutral-900 placeholder:text-neutral-400 bg-transparent border-none outline-none"
         />
         <button
           id="note-pin-toggle-btn"
           type="button"
           onClick={() => setIsPinned(!isPinned)}
-          title={isPinned ? 'Заметка закреплена' : 'Закрепить заметку вверху'}
+          title={isPinned ? t.cardUnpin : t.editorPinLabel}
           className={`p-2 rounded-lg transition-colors shrink-0 flex items-center justify-center ${
             isPinned
               ? 'bg-amber-50 text-amber-600'
@@ -122,7 +125,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           if (error) setError('');
         }}
         rows={initialNote ? 5 : 3}
-        placeholder="Текст заметки..."
+        placeholder={t.editorContentPlaceholder}
         className="w-full text-sm text-neutral-800 placeholder:text-neutral-400 bg-transparent border-none outline-none resize-y min-h-[72px]"
       />
 
@@ -148,12 +151,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
             {isPublic ? (
               <>
                 <Globe className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Публичная (видят все гости)</span>
+                <span>{t.editorPublicLabel}</span>
               </>
             ) : (
               <>
                 <Lock className="w-3.5 h-3.5 text-neutral-500" />
-                <span>Личная (только для меня)</span>
+                <span>{t.tabMy}</span>
               </>
             )}
           </button>
@@ -161,13 +164,13 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
         {isPublic && (
           <div className="flex items-center gap-1.5 w-full sm:w-auto">
-            <span className="text-neutral-500 whitespace-nowrap">Ваше имя / подпись:</span>
+            <span className="text-neutral-500 whitespace-nowrap">{t.editorAuthorLabel}:</span>
             <input
               type="text"
               id="guest-author-input"
               value={authorName}
               onChange={(e) => setAuthorName(e.target.value)}
-              placeholder="Гость..."
+              placeholder={t.editorAuthorPlaceholder}
               maxLength={30}
               className="bg-white px-2 py-1 rounded border border-neutral-300 text-xs text-neutral-900 outline-none focus:border-neutral-600 w-28 sm:w-36"
             />
@@ -180,6 +183,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         <div id="note-category-picker" className="flex items-center gap-1.5 flex-wrap">
           {CATEGORIES.map((cat) => {
             const isSelected = category === cat;
+            const translatedCat = (t.categories as Record<string, string>)[cat] || cat;
             return (
               <button
                 key={cat}
@@ -192,7 +196,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                     : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
                 }`}
               >
-                {cat}
+                {translatedCat}
               </button>
             );
           })}
@@ -208,7 +212,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors whitespace-nowrap"
             >
               <X className="w-3.5 h-3.5" />
-              Отмена
+              {t.editorCancelBtn}
             </button>
           )}
 
@@ -220,12 +224,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
             {initialNote ? (
               <>
                 <Check className="w-3.5 h-3.5" />
-                Сохранить
+                {t.editorUpdateBtn}
               </>
             ) : (
               <>
                 <Plus className="w-3.5 h-3.5" />
-                {isPublic ? 'Опубликовать для всех' : 'Записать заметку'}
+                {isPublic ? t.writeForEveryone : t.editorSaveBtn}
               </>
             )}
           </button>

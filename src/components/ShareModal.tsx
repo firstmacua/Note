@@ -12,23 +12,29 @@ import {
   Link2,
 } from 'lucide-react';
 import { Note } from '../types';
+import { Translations, Language } from '../translations';
 
 interface ShareModalProps {
   note: Note | null;
   isOpen: boolean;
+  t: Translations;
+  currentLang: Language;
   onClose: () => void;
 }
 
-export const ShareModal: React.FC<ShareModalProps> = ({ note, isOpen, onClose }) => {
+export const ShareModal: React.FC<ShareModalProps> = ({ note, isOpen, t, currentLang, onClose }) => {
   const [copiedText, setCopiedText] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [systemShareError, setSystemShareError] = useState(false);
 
   if (!isOpen || !note) return null;
 
+  const translatedCategory =
+    (t.categories as Record<string, string>)[note.category] || note.category;
+
   // Prepare note formatted message
   const formattedMessage = `📌 ${note.title}\n\n${note.content}${
-    note.category ? `\n\nКатегория: ${note.category}` : ''
+    translatedCategory ? `\n\n${currentLang === 'uk' ? 'Категорія' : 'Category'}: ${translatedCategory}` : ''
   }`;
 
   // Generate shareable link
@@ -142,10 +148,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({ note, isOpen, onClose })
             </div>
             <div>
               <h2 id="share-modal-title" className="text-base font-semibold text-neutral-900 leading-tight">
-                Отправить заметку другу
+                {t.shareTitle}
               </h2>
               <p id="share-modal-subtitle" className="text-xs text-neutral-500">
-                Выберите удобный способ отправки
+                {t.shareSubtitle}
               </p>
             </div>
           </div>
@@ -168,18 +174,18 @@ export const ShareModal: React.FC<ShareModalProps> = ({ note, isOpen, onClose })
           <div className="flex items-center justify-between gap-2 mb-1">
             <h4 className="text-xs font-semibold text-neutral-900 truncate">{note.title}</h4>
             <span className="text-[10px] bg-neutral-200 text-neutral-700 px-1.5 py-0.5 rounded font-medium shrink-0">
-              {note.category}
+              {translatedCategory}
             </span>
           </div>
           <p className="text-xs text-neutral-600 line-clamp-3 leading-relaxed whitespace-pre-wrap">
-            {note.content || '(Без текста)'}
+            {note.content || (currentLang === 'uk' ? '(Без тексту)' : '(No content)')}
           </p>
         </div>
 
         {/* Messenger Action Grid */}
         <div className="space-y-2">
           <span className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider block">
-            Отправить через мессенджер
+            {t.shareDirectText}
           </span>
 
           <div id="share-channels-grid" className="grid grid-cols-2 gap-2.5">
@@ -199,7 +205,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({ note, isOpen, onClose })
                   Telegram
                   <ExternalLink className="w-2.5 h-2.5 opacity-50 group-hover:opacity-100" />
                 </div>
-                <div className="text-[10px] text-sky-700 leading-none">В личные сообщения</div>
+                <div className="text-[10px] text-sky-700 leading-none">
+                  {currentLang === 'uk' ? 'В особисті повідомлення' : 'Send to chat'}
+                </div>
               </div>
             </a>
 
@@ -219,7 +227,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({ note, isOpen, onClose })
                   WhatsApp
                   <ExternalLink className="w-2.5 h-2.5 opacity-50 group-hover:opacity-100" />
                 </div>
-                <div className="text-[10px] text-emerald-700 leading-none">Чат или группа</div>
+                <div className="text-[10px] text-emerald-700 leading-none">
+                  {currentLang === 'uk' ? 'Чат або група' : 'Chat or group'}
+                </div>
               </div>
             </a>
 
@@ -233,8 +243,12 @@ export const ShareModal: React.FC<ShareModalProps> = ({ note, isOpen, onClose })
                 <Mail className="w-3.5 h-3.5" />
               </div>
               <div className="text-left min-w-0">
-                <div className="text-xs font-semibold leading-none mb-1">Почта (Email)</div>
-                <div className="text-[10px] text-neutral-500 leading-none">Письмом другу</div>
+                <div className="text-xs font-semibold leading-none mb-1">
+                  {currentLang === 'uk' ? 'Пошта (Email)' : 'Email'}
+                </div>
+                <div className="text-[10px] text-neutral-500 leading-none">
+                  {currentLang === 'uk' ? 'Листом другу' : 'Send email'}
+                </div>
               </div>
             </a>
 
@@ -249,7 +263,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({ note, isOpen, onClose })
               </div>
               <div className="text-left min-w-0">
                 <div className="text-xs font-semibold leading-none mb-1">SMS / iMessage</div>
-                <div className="text-[10px] text-neutral-500 leading-none">На телефон</div>
+                <div className="text-[10px] text-neutral-500 leading-none">
+                  {currentLang === 'uk' ? 'На телефон' : 'To phone'}
+                </div>
               </div>
             </a>
           </div>
@@ -266,7 +282,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ note, isOpen, onClose })
               className="w-full py-2.5 px-4 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-medium rounded-xl flex items-center justify-center gap-2 transition-colors shadow-xs"
             >
               <Share2 className="w-4 h-4" />
-              <span>Поделиться через меню устройства</span>
+              <span>{t.shareSystemBtn}</span>
             </button>
           )}
 
@@ -281,12 +297,12 @@ export const ShareModal: React.FC<ShareModalProps> = ({ note, isOpen, onClose })
               {copiedText ? (
                 <>
                   <Check className="w-3.5 h-3.5 text-emerald-600" />
-                  <span className="text-emerald-700">Текст скопирован</span>
+                  <span className="text-emerald-700">{t.shareCopied}</span>
                 </>
               ) : (
                 <>
                   <Copy className="w-3.5 h-3.5 text-neutral-600" />
-                  <span>Скопировать текст</span>
+                  <span>{t.shareCopyText}</span>
                 </>
               )}
             </button>
@@ -301,12 +317,12 @@ export const ShareModal: React.FC<ShareModalProps> = ({ note, isOpen, onClose })
               {copiedLink ? (
                 <>
                   <Check className="w-3.5 h-3.5 text-emerald-600" />
-                  <span className="text-emerald-700">Ссылка скопирована</span>
+                  <span className="text-emerald-700">{t.shareCopied}</span>
                 </>
               ) : (
                 <>
                   <Link2 className="w-3.5 h-3.5 text-neutral-600" />
-                  <span>Скопировать ссылку</span>
+                  <span>{t.shareCopyLink}</span>
                 </>
               )}
             </button>
@@ -314,7 +330,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({ note, isOpen, onClose })
 
           {systemShareError && (
             <p className="text-[11px] text-amber-600 text-center">
-              Не удалось открыть системное меню. Ссылка скопирована в буфер обмена.
+              {currentLang === 'uk'
+                ? 'Не вдалося відкрити системне меню. Посилання скопійовано в буфер обміну.'
+                : 'Could not open system share. Link copied to clipboard.'}
             </p>
           )}
         </div>

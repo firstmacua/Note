@@ -1,6 +1,6 @@
 {
-  "name": "Заметки",
-  "description": "Приложение для создания, сохранения заметок с кросс-девайсной облачной синхронизацией и отправкой друзьям.",
+  "name": "MikeNote",
+  "description": "MikeNote — додаток для створення, збереження нотаток з хмарною синхронізацією та спільною стіною.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

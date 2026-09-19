@@ -1,10 +1,17 @@
-export type NoteCategory = 'Общее' | 'Работа' | 'Идеи' | 'Личное' | 'Покупки';
+export type NoteCategory =
+  | 'Загальне'
+  | 'Робота'
+  | 'Ідеї'
+  | 'Особисте'
+  | 'Покупки'
+  | 'Общее'
+  | 'Личное';
 
 export interface Note {
   id: string;
   title: string;
   content: string;
-  category: NoteCategory;
+  category: NoteCategory | string;
   isPinned: boolean;
   createdAt: number;
   updatedAt: number;
@@ -14,6 +21,6 @@ export interface Note {
   authorId?: string;
 }
 
-export type CategoryFilter = 'Все' | NoteCategory;
+export type CategoryFilter = 'all' | string;
 
 export type NotesTab = 'public' | 'my';

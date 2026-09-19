@@ -6,12 +6,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { 
   Search, 
-  StickyNote, 
   X, 
   Plus, 
   Pin, 
   FileText, 
-  Share2, 
   Inbox, 
   Check, 
   Globe, 
@@ -25,11 +23,36 @@ import { NoteCard } from './components/NoteCard';
 import { ShareModal } from './components/ShareModal';
 import { CloudSyncBar } from './components/CloudSyncBar';
 import { CloudErrorBanner } from './components/CloudErrorBanner';
+import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { useCloudNotes } from './hooks/useCloudNotes';
+import { Language, translations } from './translations';
 
 const STORAGE_KEY = 'quick_notes_storage_v1';
+const LANG_STORAGE_KEY = 'mikenote_language';
 
 export default function App() {
+  // Language state: defaults to Ukrainian ('uk') as requested, switchable to English ('en')
+  const [currentLang, setCurrentLang] = useState<Language>(() => {
+    try {
+      const saved = localStorage.getItem(LANG_STORAGE_KEY);
+      if (saved === 'en' || saved === 'uk') return saved;
+    } catch {
+      // fallback
+    }
+    return 'uk';
+  });
+
+  const handleLanguageChange = (lang: Language) => {
+    setCurrentLang(lang);
+    try {
+      localStorage.setItem(LANG_STORAGE_KEY, lang);
+    } catch {
+      // fallback
+    }
+  };
+
+  const t = translations[currentLang];
+
   const [localNotes, setLocalNotes] = useState<Note[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -52,7 +75,6 @@ export default function App() {
     isAuthLoading,
     cloudNotes,
     publicNotes,
-    isPublicLoading,
     isSyncing,
     syncError,
     setSyncError,
@@ -74,7 +96,7 @@ export default function App() {
   }, [activeTab, publicNotes, myNotes]);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState<CategoryFilter>('Все');
+  const [activeCategory, setActiveCategory] = useState<CategoryFilter>('all');
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [isEditorExpanded, setIsEditorExpanded] = useState(false);
   const [sharingNote, setSharingNote] = useState<Note | null>(null);
@@ -100,16 +122,16 @@ export default function App() {
         const parsed = JSON.parse(jsonStr);
         if (parsed && (parsed.t || parsed.c)) {
           setReceivedNote({
-            title: parsed.t || 'Заметка от друга',
+            title: parsed.t || (currentLang === 'uk' ? 'Нотатка від друга' : 'Note from friend'),
             content: parsed.c || '',
-            category: (parsed.cat as NoteCategory) || 'Общее',
+            category: (parsed.cat as NoteCategory) || 'Загальне',
           });
         }
       }
     } catch {
       // Invalid link payload, ignore safely
     }
-  }, []);
+  }, [currentLang]);
 
   const handleAcceptReceivedNote = () => {
     if (!receivedNote) return;
@@ -151,15 +173,7 @@ export default function App() {
     }
   };
 
-  // Sync local notes to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(localNotes));
-    } catch {
-      // Ignore storage errors
-    }
-  }, [localNotes]);
-
+  // Create note
   const handleCreateNote = (data: {
     title: string;
     content: string;
@@ -169,7 +183,7 @@ export default function App() {
     authorName: string;
   }) => {
     const newNote: Note = {
-      id: `note-${Date.now()}`,
+      id: `note-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
       title: data.title,
       content: data.content,
       category: data.category,
@@ -192,6 +206,7 @@ export default function App() {
     setIsEditorExpanded(false);
   };
 
+  // Update note
   const handleUpdateNote = (data: {
     title: string;
     content: string;
@@ -201,6 +216,7 @@ export default function App() {
     authorName: string;
   }) => {
     if (!editingNote) return;
+
     const updated: Note = {
       ...editingNote,
       title: data.title,
@@ -258,7 +274,14 @@ export default function App() {
       .filter((note) => {
         if (!note) return false;
         const matchesCategory =
-          activeCategory === 'Все' || note.category === activeCategory;
+          activeCategory === 'all' ||
+          note.category === activeCategory ||
+          (activeCategory === 'Загальне' && (note.category === 'Общее' || note.category === 'General')) ||
+          (activeCategory === 'Робота' && (note.category === 'Работа' || note.category === 'Work')) ||
+          (activeCategory === 'Ідеї' && (note.category === 'Идеи' || note.category === 'Ideas')) ||
+          (activeCategory === 'Особисте' && (note.category === 'Личное' || note.category === 'Personal')) ||
+          (activeCategory === 'Покупки' && (note.category === 'Shopping'));
+
         const matchesQuery =
           !query ||
           (note.title && note.title.toLowerCase().includes(query)) ||
@@ -286,7 +309,7 @@ export default function App() {
         id="app-header"
         className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-neutral-200 py-3.5 px-4 sm:px-6"
       >
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-3 sm:gap-4 flex-wrap sm:flex-nowrap">
           <div className="flex items-center gap-2.5">
             <div
               id="app-logo-badge"
@@ -294,32 +317,38 @@ export default function App() {
             >
               <img
                 src="/cat_logo.jpg"
-                alt="Логотип"
+                alt="MikeNote Logo"
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
               />
             </div>
             <div>
               <h1 id="app-heading" className="text-lg font-bold tracking-tight text-neutral-900 flex items-center gap-2">
-                Заметки
+                MikeNote
                 <span className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 hidden sm:inline-flex items-center gap-1">
-                  <Users className="w-3 h-3" /> Общая стена
+                  <Users className="w-3 h-3" /> {t.publicWallBadge}
                 </span>
               </h1>
               <p id="app-subheading" className="text-xs text-neutral-500">
-                {currentNotesList.length}{' '}
-                {currentNotesList.length === 1 ? 'заметка' : currentNotesList.length > 4 ? 'заметок' : 'заметки'}
-                {pinnedCount > 0 && ` • ${pinnedCount} закреплено`}
+                {t.notesCount(currentNotesList.length)}
+                {pinnedCount > 0 && ` • ${t.pinnedCount(pinnedCount)}`}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 ml-auto sm:ml-0">
+            {/* Language Switcher: Ukrainian (default) & English */}
+            <LanguageSwitcher
+              currentLang={currentLang}
+              onLanguageChange={handleLanguageChange}
+            />
+
             <CloudSyncBar
               currentUser={currentUser}
               isAuthLoading={isAuthLoading}
               isSyncing={isSyncing}
               syncError={syncError}
+              t={t}
               onSignIn={signInWithGoogle}
               onSignOut={signOut}
             />
@@ -334,7 +363,7 @@ export default function App() {
               className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-medium rounded-lg transition-colors shadow-xs whitespace-nowrap"
             >
               <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Новая заметка</span>
+              <span className="hidden sm:inline">{t.newNoteBtn}</span>
             </button>
           </div>
         </div>
@@ -359,7 +388,7 @@ export default function App() {
               }`}
             >
               <Globe className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Общие заметки гостей</span>
+              <span>{t.tabPublic}</span>
               <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded-full">
                 {publicNotes.length}
               </span>
@@ -376,7 +405,7 @@ export default function App() {
               }`}
             >
               <Lock className="w-3.5 h-3.5 text-neutral-500" />
-              <span>Мои личные</span>
+              <span>{t.tabMy}</span>
               <span className="text-[10px] bg-neutral-200 text-neutral-700 font-bold px-1.5 py-0.5 rounded-full">
                 {myNotes.length}
               </span>
@@ -385,10 +414,10 @@ export default function App() {
 
           <div className="text-xs text-neutral-500">
             {activeTab === 'public'
-              ? 'Любой гость может написать заметку, и её увидят все'
+              ? t.tabPublicDesc
               : currentUser
-              ? 'Синхронизируются в вашем Google-аккаунте'
-              : 'Сохраняются только в этом браузере (войдите для синхронизации)'}
+              ? t.tabMySyncedDesc
+              : t.tabMyLocalDesc}
           </div>
         </section>
 
@@ -404,9 +433,9 @@ export default function App() {
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-blue-900">Вам отправлена заметка</span>
+                  <span className="text-xs font-semibold text-blue-900">{t.receivedBannerTitle}</span>
                   <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-medium">
-                    {receivedNote.category}
+                    {(t.categories as Record<string, string>)[receivedNote.category] || receivedNote.category}
                   </span>
                 </div>
                 <h4 className="text-sm font-semibold text-neutral-900 truncate mt-0.5">
@@ -427,7 +456,7 @@ export default function App() {
                 onClick={handleDismissReceivedNote}
                 className="px-3 py-1.5 text-xs text-neutral-600 hover:text-neutral-900 hover:bg-blue-100/60 rounded-lg transition-colors"
               >
-                Закрыть
+                {t.receivedBannerClose}
               </button>
               <button
                 id="accept-received-btn"
@@ -439,12 +468,12 @@ export default function App() {
                 {receivedAccepted ? (
                   <>
                     <Check className="w-3.5 h-3.5" />
-                    Сохранено!
+                    {t.receivedBannerSaved}
                   </>
                 ) : (
                   <>
                     <Plus className="w-3.5 h-3.5" />
-                    Сохранить в заметки
+                    {t.receivedBannerSave}
                   </>
                 )}
               </button>
@@ -458,10 +487,10 @@ export default function App() {
             <div className="flex items-center justify-between">
               <h2 id="editor-section-title" className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
                 {editingNote
-                  ? 'Редактирование заметки'
+                  ? t.editNoteTitle
                   : activeTab === 'public'
-                  ? 'Новая публичная заметка (увидят все)'
-                  : 'Новая личная заметка'}
+                  ? t.newPublicNoteTitle
+                  : t.newMyNoteTitle}
               </h2>
               <button
                 id="close-editor-btn"
@@ -473,12 +502,13 @@ export default function App() {
                 className="text-neutral-400 hover:text-neutral-700 text-xs flex items-center gap-1"
               >
                 <X className="w-3.5 h-3.5" />
-                Скрыть
+                {t.hideEditor}
               </button>
             </div>
             <NoteEditor
               initialNote={editingNote}
               defaultIsPublic={activeTab === 'public'}
+              t={t}
               onSave={editingNote ? handleUpdateNote : handleCreateNote}
               onCancel={() => {
                 setIsEditorExpanded(false);
@@ -504,7 +534,7 @@ export default function App() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={activeTab === 'public' ? "Поиск по общим заметкам и авторам..." : "Поиск по личным заметкам..."}
+              placeholder={activeTab === 'public' ? t.searchPlaceholderPublic : t.searchPlaceholderMy}
               className="w-full text-xs text-neutral-900 placeholder:text-neutral-400 bg-transparent border-none outline-none"
             />
             {searchQuery && (
@@ -521,8 +551,21 @@ export default function App() {
 
           {/* Categories Filter */}
           <div id="categories-filter" className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-            {(['Все', ...CATEGORIES] as CategoryFilter[]).map((cat) => {
+            <button
+              id="filter-pill-all"
+              type="button"
+              onClick={() => setActiveCategory('all')}
+              className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors whitespace-nowrap ${
+                activeCategory === 'all'
+                  ? 'bg-neutral-900 text-white'
+                  : 'bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-100'
+              }`}
+            >
+              {t.allCategories}
+            </button>
+            {CATEGORIES.map((cat) => {
               const isSelected = activeCategory === cat;
+              const translated = (t.categories as Record<string, string>)[cat] || cat;
               return (
                 <button
                   key={cat}
@@ -535,7 +578,7 @@ export default function App() {
                       : 'bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-100'
                   }`}
                 >
-                  {cat}
+                  {translated}
                 </button>
               );
             })}
@@ -546,13 +589,7 @@ export default function App() {
         {filteredNotes.length > 0 && (
           <div className="flex items-center justify-between text-xs text-neutral-500 pt-1">
             <span>
-              Показано: {filteredNotes.length}{' '}
-              {filteredNotes.length === 1
-                ? 'заметка'
-                : filteredNotes.length > 4
-                ? 'заметок'
-                : 'заметки'}
-              {activeTab === 'public' && ' (от всех гостей)'}
+              {t.shownNotes(filteredNotes.length, activeTab === 'public')}
             </span>
             {searchQuery && (
               <button
@@ -560,7 +597,7 @@ export default function App() {
                 onClick={() => setSearchQuery('')}
                 className="text-neutral-600 hover:underline"
               >
-                Сбросить поиск
+                {t.resetSearch}
               </button>
             )}
           </div>
@@ -576,6 +613,8 @@ export default function App() {
               <NoteCard
                 key={note.id}
                 note={note}
+                t={t}
+                currentLang={currentLang}
                 onTogglePin={handleTogglePin}
                 onEdit={(n) => {
                   setEditingNote(n);
@@ -598,17 +637,17 @@ export default function App() {
             </div>
             <h3 id="empty-state-title" className="text-base font-semibold text-neutral-900 mb-1">
               {searchQuery
-                ? 'Заметки не найдены'
+                ? t.emptySearchTitle
                 : activeTab === 'public'
-                ? 'На общей стене пока нет заметок'
-                : 'Список личных заметок пуст'}
+                ? t.emptyPublicTitle
+                : t.emptyMyTitle}
             </h3>
             <p id="empty-state-desc" className="text-xs text-neutral-500 mb-5 leading-relaxed">
               {searchQuery
-                ? `По запросу «${searchQuery}» ничего не найдено. Попробуйте изменить формулировку.`
+                ? t.emptySearchDesc(searchQuery)
                 : activeTab === 'public'
-                ? 'Будьте первым гостем! Напишите заметку, и её увидят все посетители сайта в реальном времени.'
-                : 'Создайте свою личную приватную запись, нажав на кнопку ниже.'}
+                ? t.emptyPublicDesc
+                : t.emptyMyDesc}
             </p>
             {searchQuery ? (
               <button
@@ -616,11 +655,11 @@ export default function App() {
                 type="button"
                 onClick={() => {
                   setSearchQuery('');
-                  setActiveCategory('Все');
+                  setActiveCategory('all');
                 }}
                 className="px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-medium rounded-lg transition-colors whitespace-nowrap"
               >
-                Сбросить фильтры
+                {t.resetFilters}
               </button>
             ) : (
               <button
@@ -630,7 +669,7 @@ export default function App() {
                 className="inline-flex items-center gap-1.5 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-medium rounded-lg transition-colors shadow-xs whitespace-nowrap"
               >
                 <Plus className="w-4 h-4" />
-                {activeTab === 'public' ? 'Написать для всех' : 'Создать первую заметку'}
+                {activeTab === 'public' ? t.writeForEveryone : t.createFirstNote}
               </button>
             )}
           </div>
@@ -641,6 +680,8 @@ export default function App() {
       <ShareModal
         note={sharingNote}
         isOpen={!!sharingNote}
+        t={t}
+        currentLang={currentLang}
         onClose={() => setSharingNote(null)}
       />
     </div>
