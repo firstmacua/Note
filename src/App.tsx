@@ -290,9 +290,14 @@ export default function App() {
           <div className="flex items-center gap-2.5">
             <div
               id="app-logo-badge"
-              className="w-9 h-9 rounded-lg bg-neutral-900 text-white flex items-center justify-center shadow-xs"
+              className="w-9 h-9 rounded-lg overflow-hidden border border-neutral-200 shadow-xs shrink-0 flex items-center justify-center bg-neutral-100"
             >
-              <StickyNote className="w-5 h-5" />
+              <img
+                src="/cat_logo.jpg"
+                alt="Логотип"
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
             </div>
             <div>
               <h1 id="app-heading" className="text-lg font-bold tracking-tight text-neutral-900 flex items-center gap-2">
