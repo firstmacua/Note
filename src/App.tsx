@@ -34,7 +34,8 @@ export default function App() {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {
       // Fallback
@@ -61,11 +62,16 @@ export default function App() {
     deleteNote,
   } = useCloudNotes(localNotes);
 
-  // Private notes list (from cloud when logged in, or local when guest)
-  const myNotes = cloudNotes !== null ? cloudNotes : localNotes;
+  // Private notes list (from cloud when logged in, or local fallback)
+  const myNotes = useMemo(() => {
+    return Array.isArray(cloudNotes) ? cloudNotes : (Array.isArray(localNotes) ? localNotes : []);
+  }, [cloudNotes, localNotes]);
 
-  // Selected notes depending on tab
-  const currentNotesList = activeTab === 'public' ? publicNotes : myNotes;
+  // Selected notes depending on tab, guaranteed to be a valid array
+  const currentNotesList = useMemo(() => {
+    const list = activeTab === 'public' ? publicNotes : myNotes;
+    return Array.isArray(list) ? list : [];
+  }, [activeTab, publicNotes, myNotes]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>('Все');
@@ -175,11 +181,9 @@ export default function App() {
     };
 
     if (data.isPublic) {
-      // Public notes go directly to Firestore shared wall
       saveNote(newNote);
       setActiveTab('public');
     } else {
-      // Private note
       setLocalNotes((prev) => [newNote, ...prev]);
       saveNote(newNote);
       setActiveTab('my');
@@ -252,25 +256,28 @@ export default function App() {
     const query = searchQuery.trim().toLowerCase();
     return currentNotesList
       .filter((note) => {
+        if (!note) return false;
         const matchesCategory =
           activeCategory === 'Все' || note.category === activeCategory;
         const matchesQuery =
           !query ||
-          note.title.toLowerCase().includes(query) ||
-          note.content.toLowerCase().includes(query) ||
+          (note.title && note.title.toLowerCase().includes(query)) ||
+          (note.content && note.content.toLowerCase().includes(query)) ||
           (note.authorName && note.authorName.toLowerCase().includes(query));
         return matchesCategory && matchesQuery;
       })
       .sort((a, b) => {
-        // Pinned notes first
         if (a.isPinned && !b.isPinned) return -1;
         if (!a.isPinned && b.isPinned) return 1;
-        // Then by updated/created date descending
-        return (b.updatedAt || b.createdAt) - (a.updatedAt || a.createdAt);
+        const dateA = Number(a.updatedAt || a.createdAt || 0);
+        const dateB = Number(b.updatedAt || b.createdAt || 0);
+        return dateB - dateA;
       });
   }, [currentNotesList, searchQuery, activeCategory]);
 
-  const pinnedCount = useMemo(() => currentNotesList.filter((n) => n.isPinned).length, [currentNotesList]);
+  const pinnedCount = useMemo(() => {
+    return currentNotesList.filter((n) => n && n.isPinned).length;
+  }, [currentNotesList]);
 
   return (
     <div id="notes-app-root" className="min-h-screen bg-neutral-50 text-neutral-900 antialiased">
@@ -334,7 +341,7 @@ export default function App() {
         <CloudErrorBanner error={syncError} onDismiss={() => setSyncError(null)} />
 
         {/* Tab Navigation: Public notes vs My private notes */}
-        <section id="tabs-navigation" className="flex items-center justify-between gap-3 border-b border-neutral-200 pb-3">
+        <section id="tabs-navigation" className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-200 pb-3">
           <div className="flex items-center gap-2 bg-neutral-200/70 p-1 rounded-xl">
             <button
               id="tab-public-notes"
@@ -348,7 +355,7 @@ export default function App() {
             >
               <Globe className="w-3.5 h-3.5 text-emerald-600" />
               <span>Общие заметки гостей</span>
-              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded-full">
+              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded-full">
                 {publicNotes.length}
               </span>
             </button>
@@ -365,18 +372,18 @@ export default function App() {
             >
               <Lock className="w-3.5 h-3.5 text-neutral-500" />
               <span>Мои личные</span>
-              <span className="text-[10px] bg-neutral-200 text-neutral-700 font-bold px-1.5 py-0.2 rounded-full">
+              <span className="text-[10px] bg-neutral-200 text-neutral-700 font-bold px-1.5 py-0.5 rounded-full">
                 {myNotes.length}
               </span>
             </button>
           </div>
 
-          <div className="text-xs text-neutral-500 hidden sm:block">
+          <div className="text-xs text-neutral-500">
             {activeTab === 'public'
-              ? 'Любой гость может написать заметку, и ее сразу увидят все'
+              ? 'Любой гость может написать заметку, и её увидят все'
               : currentUser
-              ? 'Синхронизируются только в вашем Google-аккаунте'
-              : 'Сохраняются только в этом браузере'}
+              ? 'Синхронизируются в вашем Google-аккаунте'
+              : 'Сохраняются только в этом браузере (войдите для синхронизации)'}
           </div>
         </section>
 

@@ -5,8 +5,7 @@ import {
   signOut as fbSignOut, 
   onAuthStateChanged, 
   signInWithRedirect,
-  getRedirectResult,
-  signInAnonymously
+  getRedirectResult
 } from 'firebase/auth';
 import { 
   collection, 
@@ -15,9 +14,7 @@ import {
   deleteDoc, 
   onSnapshot, 
   writeBatch,
-  serverTimestamp,
-  query,
-  orderBy
+  serverTimestamp
 } from 'firebase/firestore';
 import { auth, googleProvider, db } from '../lib/firebase';
 import { Note } from '../types';
@@ -36,6 +33,17 @@ export function useCloudNotes(initialLocalNotes: Note[]) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
 
+  // Helper to safely parse timestamp
+  const parseTimestamp = (val: unknown): number => {
+    if (!val) return Date.now();
+    if (typeof val === 'number' && !isNaN(val)) return val;
+    if (typeof val === 'object' && val !== null && 'toMillis' in val) {
+      return (val as { toMillis: () => number }).toMillis();
+    }
+    const parsed = Number(val);
+    return isNaN(parsed) ? Date.now() : parsed;
+  };
+
   // 1. Monitor Auth state
   useEffect(() => {
     getRedirectResult(auth).catch((err) => {
@@ -52,45 +60,50 @@ export function useCloudNotes(initialLocalNotes: Note[]) {
 
   // 2. Real-time listener for PUBLIC NOTES (guest wall, visible to all)
   useEffect(() => {
-    const publicColRef = collection(db, 'public_notes');
+    try {
+      const publicColRef = collection(db, 'public_notes');
 
-    const unsubscribe = onSnapshot(
-      publicColRef,
-      (snapshot) => {
-        const loaded: Note[] = [];
-        snapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          loaded.push({
-            id: docSnap.id,
-            title: data.title || '',
-            content: data.content || '',
-            category: data.category || 'Общее',
-            isPinned: Boolean(data.isPinned),
-            isPublic: true,
-            authorName: data.authorName || 'Гость',
-            authorId: data.authorId || '',
-            createdAt: data.createdAt ? Number(data.createdAt) : Date.now(),
-            updatedAt: data.updatedAt ? Number(data.updatedAt) : Date.now(),
+      const unsubscribe = onSnapshot(
+        publicColRef,
+        (snapshot) => {
+          const loaded: Note[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            loaded.push({
+              id: docSnap.id,
+              title: String(data.title || ''),
+              content: String(data.content || ''),
+              category: data.category || 'Общее',
+              isPinned: Boolean(data.isPinned),
+              isPublic: true,
+              authorName: String(data.authorName || 'Гость'),
+              authorId: String(data.authorId || ''),
+              createdAt: parseTimestamp(data.createdAt),
+              updatedAt: parseTimestamp(data.updatedAt),
+            });
           });
-        });
 
-        // Sort: pinned first, then newest
-        loaded.sort((a, b) => {
-          if (a.isPinned && !b.isPinned) return -1;
-          if (!a.isPinned && b.isPinned) return 1;
-          return (b.updatedAt || b.createdAt) - (a.updatedAt || a.createdAt);
-        });
+          // Sort: pinned first, then newest
+          loaded.sort((a, b) => {
+            if (a.isPinned && !b.isPinned) return -1;
+            if (!a.isPinned && b.isPinned) return 1;
+            return (b.updatedAt || b.createdAt) - (a.updatedAt || a.createdAt);
+          });
 
-        setPublicNotes(loaded);
-        setIsPublicLoading(false);
-      },
-      (err) => {
-        console.error('Public notes snapshot error:', err);
-        setIsPublicLoading(false);
-      }
-    );
+          setPublicNotes(loaded);
+          setIsPublicLoading(false);
+        },
+        (err) => {
+          console.error('Public notes snapshot error:', err);
+          setIsPublicLoading(false);
+        }
+      );
 
-    return () => unsubscribe();
+      return () => unsubscribe();
+    } catch (err) {
+      console.error('Failed to init public notes listener:', err);
+      setIsPublicLoading(false);
+    }
   }, []);
 
   // 3. Real-time listener for PRIVATE NOTES when user is logged in
@@ -101,60 +114,66 @@ export function useCloudNotes(initialLocalNotes: Note[]) {
     }
 
     setIsSyncing(true);
-    const notesCollectionRef = collection(db, 'users', currentUser.uid, 'notes');
+    try {
+      const notesCollectionRef = collection(db, 'users', currentUser.uid, 'notes');
 
-    const unsubscribe = onSnapshot(
-      notesCollectionRef,
-      (snapshot) => {
-        const loaded: Note[] = [];
-        snapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          loaded.push({
-            id: docSnap.id,
-            title: data.title || '',
-            content: data.content || '',
-            category: data.category || 'Общее',
-            isPinned: Boolean(data.isPinned),
-            isPublic: false,
-            createdAt: data.createdAt ? Number(data.createdAt) : Date.now(),
-            updatedAt: data.updatedAt ? Number(data.updatedAt) : Date.now(),
-          });
-        });
-
-        // Migrate initial local notes to user cloud on first login
-        if (snapshot.empty && initialLocalNotes.length > 0) {
-          const batch = writeBatch(db);
-          initialLocalNotes.forEach((n) => {
-            const docRef = doc(db, 'users', currentUser.uid, 'notes', n.id);
-            batch.set(docRef, {
-              userId: currentUser.uid,
-              title: n.title,
-              content: n.content,
-              category: n.category,
-              isPinned: n.isPinned,
+      const unsubscribe = onSnapshot(
+        notesCollectionRef,
+        (snapshot) => {
+          const loaded: Note[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            loaded.push({
+              id: docSnap.id,
+              title: String(data.title || ''),
+              content: String(data.content || ''),
+              category: data.category || 'Общее',
+              isPinned: Boolean(data.isPinned),
               isPublic: false,
-              createdAt: n.createdAt,
-              updatedAt: n.updatedAt,
-              syncedAt: serverTimestamp(),
+              authorName: currentUser.displayName || currentUser.email || 'Я',
+              createdAt: parseTimestamp(data.createdAt),
+              updatedAt: parseTimestamp(data.updatedAt),
             });
           });
-          batch.commit().catch((err) => {
-            console.error('Failed to migrate local notes to cloud:', err);
-          });
+
+          // Migrate initial local notes to user cloud on first login
+          if (snapshot.empty && initialLocalNotes.length > 0) {
+            const batch = writeBatch(db);
+            initialLocalNotes.forEach((n) => {
+              const docRef = doc(db, 'users', currentUser.uid, 'notes', n.id);
+              batch.set(docRef, {
+                userId: currentUser.uid,
+                title: n.title,
+                content: n.content,
+                category: n.category,
+                isPinned: n.isPinned,
+                isPublic: false,
+                createdAt: n.createdAt,
+                updatedAt: n.updatedAt,
+                syncedAt: serverTimestamp(),
+              });
+            });
+            batch.commit().catch((err) => {
+              console.error('Failed to migrate local notes to cloud:', err);
+            });
+          }
+
+          setCloudNotes(loaded);
+          setIsSyncing(false);
+          setSyncError(null);
+        },
+        (err) => {
+          console.error('Firestore private notes sync error:', err);
+          setSyncError('Ошибка доступа к приватной облачной базе');
+          setIsSyncing(false);
         }
+      );
 
-        setCloudNotes(loaded);
-        setIsSyncing(false);
-        setSyncError(null);
-      },
-      (err) => {
-        console.error('Firestore sync error:', err);
-        setSyncError('Ошибка доступа к приватной облачной базе');
-        setIsSyncing(false);
-      }
-    );
-
-    return () => unsubscribe();
+      return () => unsubscribe();
+    } catch (err) {
+      console.error('Failed to subscribe to private notes:', err);
+      setIsSyncing(false);
+    }
   }, [currentUser]);
 
   // Google Sign-in
@@ -208,7 +227,6 @@ export function useCloudNotes(initialLocalNotes: Note[]) {
   // Save public or private note
   const saveNote = async (note: Note) => {
     if (note.isPublic) {
-      // Save directly to public_notes collection (accessible to all guests)
       try {
         const docRef = doc(db, 'public_notes', note.id);
         await setDoc(docRef, {
@@ -227,7 +245,6 @@ export function useCloudNotes(initialLocalNotes: Note[]) {
         console.error('Failed to save public note:', err);
       }
     } else if (currentUser) {
-      // Save to user's private collection
       try {
         const docRef = doc(db, 'users', currentUser.uid, 'notes', note.id);
         await setDoc(docRef, {

@@ -20,35 +20,45 @@ export const NoteCard: React.FC<NoteCardProps> = ({
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
-    const textToCopy = note.title ? `${note.title}\n\n${note.content}` : note.content;
+    const textToCopy = note.title ? `${note.title}\n\n${note.content || ''}` : (note.content || '');
     try {
       await navigator.clipboard.writeText(textToCopy);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback if clipboard API is restricted
-      const textarea = document.createElement('textarea');
-      textarea.value = textToCopy;
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = textToCopy;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch {
+        // Safe fallback
+      }
     }
   };
 
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleDateString('ru-RU', {
-      day: 'numeric',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  const formatDate = (timestamp?: number) => {
+    if (!timestamp || isNaN(Number(timestamp))) {
+      return 'Только что';
+    }
+    try {
+      const date = new Date(Number(timestamp));
+      return date.toLocaleDateString('ru-RU', {
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return 'Только что';
+    }
   };
 
-  const getCategoryBadgeClass = (cat: string) => {
+  const getCategoryBadgeClass = (cat?: string) => {
     switch (cat) {
       case 'Работа':
         return 'bg-blue-50 text-blue-700 border-blue-200';
@@ -76,7 +86,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({
         {/* Header with Title, Guest Author Badge & Pin */}
         <div className="flex items-start justify-between gap-2 mb-2">
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5 mb-1">
+            <div className="flex items-center gap-1.5 mb-1 flex-wrap">
               {note.isPublic ? (
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
                   <Globe className="w-2.5 h-2.5" />
@@ -96,7 +106,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({
               id={`note-title-${note.id}`}
               className="text-base font-semibold text-neutral-900 tracking-tight leading-snug break-words"
             >
-              {note.title}
+              {note.title || 'Без названия'}
             </h3>
           </div>
 
@@ -116,14 +126,14 @@ export const NoteCard: React.FC<NoteCardProps> = ({
         </div>
 
         {/* Content */}
-        {note.content && (
+        {note.content ? (
           <p
             id={`note-content-${note.id}`}
             className="text-sm text-neutral-700 whitespace-pre-wrap break-words leading-relaxed mb-4"
           >
             {note.content}
           </p>
-        )}
+        ) : null}
       </div>
 
       {/* Footer */}
@@ -135,7 +145,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({
               note.category
             )}`}
           >
-            {note.category}
+            {note.category || 'Общее'}
           </span>
           <time
             id={`note-date-${note.id}`}
