@@ -1,6 +1,6 @@
 import { Note, NoteCategory } from './types';
 
-export const CATEGORIES: NoteCategory[] = ['Загальне', 'Робота', 'Ідеї', 'Покупки', 'Тренування'];
+export const CATEGORIES: NoteCategory[] = ['Загальне', 'Робота', 'Покупки', 'Тренування'];
 
 export const INITIAL_NOTES: Note[] = [
   {
@@ -16,7 +16,7 @@ export const INITIAL_NOTES: Note[] = [
     id: 'note-2',
     title: 'Ідея для нового сервісу',
     content: 'Зробити мінімалістичний календар із фокусом на глибоку роботу без зайвих сповіщень.',
-    category: 'Ідеї',
+    category: 'Робота',
     isPinned: false,
     createdAt: Date.now() - 3600000 * 12,
     updatedAt: Date.now() - 3600000 * 12,

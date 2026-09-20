@@ -14,8 +14,7 @@ import {
   Check, 
   Globe, 
   Lock,
-  Users,
-  Sparkles
+  Users
 } from 'lucide-react';
 import { Note, NoteCategory, CategoryFilter, NotesTab, WorkoutExercise } from './types';
 import { CATEGORIES, INITIAL_NOTES } from './data';
@@ -25,7 +24,6 @@ import { ShareModal } from './components/ShareModal';
 import { CloudSyncBar } from './components/CloudSyncBar';
 import { CloudErrorBanner } from './components/CloudErrorBanner';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
-import { IdeaGeneratorChat } from './components/IdeaGeneratorChat';
 import { useCloudNotes } from './hooks/useCloudNotes';
 import { Language, translations } from './translations';
 
@@ -99,7 +97,6 @@ export default function App() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>('all');
-  const [isIdeaChatOpen, setIsIdeaChatOpen] = useState(true);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [isEditorExpanded, setIsEditorExpanded] = useState(false);
   const [sharingNote, setSharingNote] = useState<Note | null>(null);
@@ -573,86 +570,25 @@ export default function App() {
             </button>
             {CATEGORIES.map((cat) => {
               const isSelected = activeCategory === cat;
-              const isIdeas = cat === 'Ідеї';
               const translated = (t.categories as Record<string, string>)[cat] || cat;
               return (
                 <button
                   key={cat}
                   id={`filter-pill-${cat}`}
                   type="button"
-                  onClick={() => {
-                    setActiveCategory(cat);
-                    if (isIdeas) {
-                      setIsIdeaChatOpen(true);
-                    }
-                  }}
+                  onClick={() => setActiveCategory(cat)}
                   className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors whitespace-nowrap inline-flex items-center gap-1.5 ${
                     isSelected
                       ? 'bg-neutral-900 text-white'
                       : 'bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-100'
                   }`}
                 >
-                  {isIdeas && (
-                    <Sparkles
-                      className={`w-3.5 h-3.5 ${
-                        isSelected ? 'text-amber-300' : 'text-amber-500'
-                      }`}
-                    />
-                  )}
                   <span>{translated}</span>
                 </button>
               );
             })}
           </div>
         </section>
-
-        {/* AI Idea Generator Mini-Chat in Ideas category */}
-        {activeCategory === 'Ідеї' && (
-          <>
-            {isIdeaChatOpen ? (
-              <IdeaGeneratorChat
-                t={t}
-                currentLang={currentLang}
-                onAddNoteFromIdea={(idea) => {
-                  handleCreateNote({
-                    title: idea.title,
-                    content: idea.content,
-                    category: 'Ідеї',
-                    isPinned: false,
-                    isPublic: activeTab === 'public',
-                    authorName: '',
-                  });
-                }}
-                onInsertIntoEditor={(text) => {
-                  setEditingNote(null);
-                  setIsEditorExpanded(true);
-                  setTimeout(() => {
-                    const textarea = document.getElementById(
-                      'note-content-input'
-                    ) as HTMLTextAreaElement | null;
-                    if (textarea) {
-                      textarea.value = text;
-                      textarea.dispatchEvent(new Event('input', { bubbles: true }));
-                    }
-                  }, 100);
-                }}
-                onClose={() => setIsIdeaChatOpen(false)}
-              />
-            ) : (
-              <div className="flex justify-end -mt-2 mb-2">
-                <button
-                  type="button"
-                  id="reopen-idea-chat-btn"
-                  onClick={() => setIsIdeaChatOpen(true)}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-3 py-1.5 rounded-xl transition-colors shadow-2xs"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                  <span>{t.ideaToggleOpen}</span>
-                </button>
-              </div>
-            )}
-          </>
-        )}
 
         {/* Indicator */}
         {filteredNotes.length > 0 && (
