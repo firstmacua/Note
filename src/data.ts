@@ -1,6 +1,6 @@
 import { Note, NoteCategory } from './types';
 
-export const CATEGORIES: NoteCategory[] = ['Загальне', 'Робота', 'Ідеї', 'Особисте', 'Покупки'];
+export const CATEGORIES: NoteCategory[] = ['Загальне', 'Робота', 'Ідеї', 'Особисте', 'Покупки', 'Тренування'];
 
 export const INITIAL_NOTES: Note[] = [
   {

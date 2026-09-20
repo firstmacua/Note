@@ -280,7 +280,9 @@ export default function App() {
           (activeCategory === 'Робота' && (note.category === 'Работа' || note.category === 'Work')) ||
           (activeCategory === 'Ідеї' && (note.category === 'Идеи' || note.category === 'Ideas')) ||
           (activeCategory === 'Особисте' && (note.category === 'Личное' || note.category === 'Personal')) ||
-          (activeCategory === 'Покупки' && (note.category === 'Shopping'));
+          (activeCategory === 'Покупки' && (note.category === 'Shopping')) ||
+          (activeCategory === 'Тренування' && (note.category === 'Тренировка' || note.category === 'Workout')) ||
+          (activeCategory === 'Тренировка' && (note.category === 'Тренування' || note.category === 'Workout'));
 
         const matchesQuery =
           !query ||

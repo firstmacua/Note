@@ -82,6 +82,9 @@ export interface Translations {
     'Ідеї': string;
     'Особисте': string;
     'Покупки': string;
+    'Тренування': string;
+    'Тренировка'?: string;
+    'Workout'?: string;
     'Общее'?: string;
     'Работа'?: string;
     'Идеи'?: string;
@@ -190,6 +193,9 @@ export const translations: Record<Language, Translations> = {
       'Ідеї': 'Ідеї',
       'Особисте': 'Особисте',
       'Покупки': 'Покупки',
+      'Тренування': 'Тренування',
+      'Тренировка': 'Тренування',
+      'Workout': 'Тренування',
       'Общее': 'Загальне',
       'Работа': 'Робота',
       'Идеи': 'Ідеї',
@@ -280,6 +286,9 @@ export const translations: Record<Language, Translations> = {
       'Ідеї': 'Ideas',
       'Особисте': 'Personal',
       'Покупки': 'Shopping',
+      'Тренування': 'Workout',
+      'Тренировка': 'Workout',
+      'Workout': 'Workout',
       'Общее': 'General',
       'Работа': 'Work',
       'Идеи': 'Ideas',
