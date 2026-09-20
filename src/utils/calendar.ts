@@ -77,13 +77,60 @@ export function getIcsServerUrl(
   startDate: Date,
   durationMinutes = 30
 ): string {
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const params = new URLSearchParams({
     title: (title || 'MikeNote Нагадування').slice(0, 120),
     details: (description || '').slice(0, 800),
     start: startDate.getTime().toString(),
     duration: durationMinutes.toString(),
   });
-  return `/api/calendar/event.ics?${params.toString()}`;
+  return `${origin}/api/calendar/event.ics?${params.toString()}`;
+}
+
+export function getWebcalUrl(
+  title: string,
+  description: string,
+  startDate: Date,
+  durationMinutes = 30
+): string {
+  const host = typeof window !== 'undefined' ? window.location.host : 'localhost:3000';
+  const params = new URLSearchParams({
+    title: (title || 'MikeNote Нагадування').slice(0, 120),
+    details: (description || '').slice(0, 800),
+    start: startDate.getTime().toString(),
+    duration: durationMinutes.toString(),
+  });
+  return `webcal://${host}/api/calendar/event.ics?${params.toString()}`;
+}
+
+export async function shareToAppleReminders(
+  title: string,
+  content: string,
+  formattedDate: string
+): Promise<boolean> {
+  if (typeof navigator === 'undefined' || !navigator.share) {
+    return false;
+  }
+  try {
+    const textLines = [
+      title || 'MikeNote Нагадування',
+      content ? content : '',
+      `⏰ ${formattedDate}`,
+    ].filter(Boolean);
+
+    await navigator.share({
+      title: title || 'MikeNote',
+      text: textLines.join('\n\n'),
+      url: typeof window !== 'undefined' ? window.location.href : undefined,
+    });
+    return true;
+  } catch (err) {
+    if ((err as Error)?.name === 'AbortError') {
+      return true; // User tapped cancel, not a crash
+    }
+    console.warn('Share to Reminders failed:', err);
+    return false;
+  }
 }
 
 export async function shareIcsFile(
@@ -162,5 +209,37 @@ export function formatReminderDisplay(timestamp: number, lang: 'uk' | 'en'): str
     return `${dateStr}, ${timeStr}`;
   } catch {
     return '';
+  }
+}
+
+export function playReminderSound(): void {
+  try {
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+
+    const playTone = (freq: number, start: number, duration: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, start);
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.2, start + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + duration);
+    };
+
+    // Uplifting notification melodic chime (E5 -> G#5 -> B5)
+    playTone(659.25, now, 0.3);
+    playTone(830.61, now + 0.14, 0.3);
+    playTone(987.77, now + 0.28, 0.5);
+  } catch {
+    // Audio might be blocked without user gesture
   }
 }

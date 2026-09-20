@@ -10,6 +10,12 @@ import {
   Clock,
   Apple,
   Share2,
+  ListTodo,
+  Download,
+  Copy,
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { Note } from '../types';
 import { Translations, Language } from '../translations';
@@ -20,6 +26,8 @@ import {
   formatReminderDisplay,
   isIOSDevice,
   getIcsServerUrl,
+  getWebcalUrl,
+  shareToAppleReminders,
   shareIcsFile,
 } from '../utils/calendar';
 
@@ -65,18 +73,14 @@ export const CalendarReminderModal: React.FC<CalendarReminderModalProps> = ({
     formatInputDateTime(getInitialDate())
   );
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
-  const [canShareFile, setCanShareFile] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [showIcsSteps, setShowIcsSteps] = useState(false);
 
-  useEffect(() => {
-    if (typeof navigator !== 'undefined' && navigator.canShare) {
-      try {
-        const testFile = new File([''], 'test.ics', { type: 'text/calendar' });
-        setCanShareFile(Boolean(navigator.canShare({ files: [testFile] })));
-      } catch {
-        setCanShareFile(false);
-      }
-    }
-  }, []);
+  // Detect iframe or in-app browser environment where downloads/schemes may be restricted
+  const isIframe = typeof window !== 'undefined' && window.self !== window.top;
+  const isInAppBrowser =
+    typeof navigator !== 'undefined' &&
+    /Telegram|Viber|FBAN|FBAV|Instagram|Line/i.test(navigator.userAgent);
 
   // Close on Escape key
   useEffect(() => {
@@ -124,37 +128,35 @@ export const CalendarReminderModal: React.FC<CalendarReminderModalProps> = ({
   };
 
   const targetDate = getSelectedDate();
-  const serverIcsUrl = getIcsServerUrl(
-    note.title || (currentLang === 'uk' ? 'Нотатка MikeNote' : 'MikeNote Note'),
-    note.content || '',
-    targetDate
-  );
+  const selectedTimestamp = targetDate.getTime();
+  const readableSelected = formatReminderDisplay(selectedTimestamp, currentLang);
 
-  const handleAppleIosCalendarClick = () => {
+  const noteTitleClean = note.title || (currentLang === 'uk' ? 'Нотатка MikeNote' : 'MikeNote Note');
+  const webcalUrl = getWebcalUrl(noteTitleClean, note.content || '', targetDate);
+  const serverIcsUrl = getIcsServerUrl(noteTitleClean, note.content || '', targetDate);
+
+  // 1. Add to Apple Reminders app via native iOS share
+  const handleAppleRemindersClick = async () => {
     onSaveReminder(note.id, targetDate.getTime());
-    setFeedbackMessage(t.reminderSavedSuccess);
-  };
-
-  const handleShareIcs = async () => {
-    const ics = generateIcsContent(
+    const shared = await shareToAppleReminders(
       note.title || 'MikeNote Нагадування',
       note.content || '',
-      targetDate
-    );
-    const cleanFilename = (note.title || 'reminder')
-      .replace(/[^a-zA-Z0-9а-яА-ЯіїєґІЇЄҐ_-]/g, '_')
-      .substring(0, 30);
-    const shared = await shareIcsFile(
-      cleanFilename,
-      ics,
-      note.title || 'MikeNote Нагадування'
+      readableSelected
     );
     if (shared) {
-      onSaveReminder(note.id, targetDate.getTime());
       setFeedbackMessage(t.reminderSavedSuccess);
     }
   };
 
+  // 2. Open via webcal link (native Apple Calendar prompt)
+  const handleWebcalClick = () => {
+    onSaveReminder(note.id, targetDate.getTime());
+    setFeedbackMessage(t.reminderSavedSuccess);
+    // On iOS Safari, navigating directly to webcal opens native Calendar subscribe prompt
+    window.location.href = webcalUrl;
+  };
+
+  // 3. Open Google Calendar
   const handleOpenGoogleCalendar = () => {
     const googleUrl = getGoogleCalendarUrl(
       note.title || 'Нотатка MikeNote',
@@ -169,6 +171,7 @@ export const CalendarReminderModal: React.FC<CalendarReminderModalProps> = ({
     }, 1200);
   };
 
+  // 4. Download .ics file
   const handleDownloadPhoneIcs = () => {
     const ics = generateIcsContent(
       note.title || 'Нотатка MikeNote',
@@ -182,9 +185,23 @@ export const CalendarReminderModal: React.FC<CalendarReminderModalProps> = ({
 
     onSaveReminder(note.id, targetDate.getTime());
     setFeedbackMessage(t.reminderSavedSuccess);
-    setTimeout(() => {
-      onClose();
-    }, 1400);
+    if (isIOS) {
+      setShowIcsSteps(true);
+    } else {
+      setTimeout(() => {
+        onClose();
+      }, 1400);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    } catch {
+      // ignore
+    }
   };
 
   const handleSaveOnly = () => {
@@ -203,9 +220,6 @@ export const CalendarReminderModal: React.FC<CalendarReminderModalProps> = ({
     }, 900);
   };
 
-  const selectedTimestamp = targetDate.getTime();
-  const readableSelected = formatReminderDisplay(selectedTimestamp, currentLang);
-
   return (
     <div
       id="calendar-reminder-modal-overlay"
@@ -216,7 +230,7 @@ export const CalendarReminderModal: React.FC<CalendarReminderModalProps> = ({
     >
       <div
         id="calendar-reminder-modal-content"
-        className="bg-white w-full max-w-md rounded-2xl shadow-xl border border-neutral-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+        className="bg-white w-full max-w-md rounded-2xl shadow-xl border border-neutral-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150 my-auto"
       >
         {/* Header */}
         <div className="p-5 border-b border-neutral-100 flex items-start justify-between gap-3 bg-neutral-50/50">
@@ -245,6 +259,25 @@ export const CalendarReminderModal: React.FC<CalendarReminderModalProps> = ({
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Notice for iframe / in-app browsers */}
+        {(isIframe || isInAppBrowser) && (
+          <div className="mx-5 mt-4 p-3 bg-amber-50/90 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="flex-1 space-y-1.5">
+              <p className="leading-snug">{t.reminderIframeNotice}</p>
+              <button
+                type="button"
+                id="copy-safari-link-btn"
+                onClick={handleCopyLink}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-amber-300 rounded-lg text-amber-900 font-medium text-[11px] shadow-2xs hover:bg-amber-100 transition-colors"
+              >
+                <Copy className="w-3 h-3 text-amber-700" />
+                <span>{copiedLink ? t.shareCopied : t.reminderCopySafariLink}</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Note Preview */}
         <div className="px-5 pt-4">
@@ -277,12 +310,12 @@ export const CalendarReminderModal: React.FC<CalendarReminderModalProps> = ({
           </div>
         </div>
 
-        {/* Form Body */}
+        {/* Content Body */}
         <div className="p-5 space-y-4">
           {/* Quick presets */}
           <div>
-            <span className="block text-xs font-medium text-neutral-700 mb-1.5">
-              {currentLang === 'uk' ? 'Швидкий вибір:' : 'Quick presets:'}
+            <span className="block text-[11px] font-medium text-neutral-500 mb-1.5">
+              {currentLang === 'uk' ? 'Швидкий вибір часу:' : 'Quick time selection:'}
             </span>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
               <button
@@ -336,7 +369,8 @@ export const CalendarReminderModal: React.FC<CalendarReminderModalProps> = ({
                 onChange={(e) => setSelectedDateStr(e.target.value)}
                 min={formatInputDateTime(new Date())}
                 className="w-full bg-white border border-neutral-300 focus:border-neutral-900 rounded-xl px-3 py-2.5 text-sm text-neutral-900 outline-none transition-colors"
-              />
+              >
+              </input>
             </div>
             {readableSelected && (
               <div className="mt-1 text-[11px] text-neutral-500 font-medium flex items-center gap-1">
@@ -359,38 +393,39 @@ export const CalendarReminderModal: React.FC<CalendarReminderModalProps> = ({
             </div>
           )}
 
-          {/* Calendar Action Buttons */}
+          {/* Action Buttons for Mobile / Desktop */}
           <div className="space-y-2 pt-1">
-            {/* 1. Direct Apple Calendar / iPhone Link (Native iOS Event Sheet) */}
-            <a
-              id="open-apple-calendar-link"
-              href={serverIcsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={handleAppleIosCalendarClick}
+            {/* 1. Apple Reminders via Native iOS Share (Most reliable on iOS) */}
+            <button
+              type="button"
+              id="share-apple-reminders-btn"
+              onClick={handleAppleRemindersClick}
               className="w-full inline-flex items-center justify-between px-4 py-3 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-semibold transition-all shadow-xs group"
             >
               <div className="flex items-center gap-2.5 truncate">
-                <Apple className="w-4 h-4 text-white shrink-0" />
-                <span className="truncate">{t.reminderBtnAppleIos}</span>
+                <div className="w-5 h-5 rounded-md bg-white/20 flex items-center justify-center shrink-0">
+                  <ListTodo className="w-3.5 h-3.5 text-white" />
+                </div>
+                <span className="truncate">{t.reminderBtnRemindersApp}</span>
               </div>
-              <ExternalLink className="w-3.5 h-3.5 opacity-60 group-hover:opacity-100 shrink-0 ml-2" />
-            </a>
+              <Share2 className="w-3.5 h-3.5 opacity-70 group-hover:opacity-100 shrink-0 ml-2" />
+            </button>
 
-            {/* 2. Web Share API for iOS (opens system share sheet with Calendar option) */}
-            {canShareFile && (
-              <button
-                type="button"
-                id="share-apple-calendar-btn"
-                onClick={handleShareIcs}
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 rounded-xl text-xs font-medium transition-colors"
-              >
-                <Share2 className="w-3.5 h-3.5 text-neutral-600" />
-                <span>{t.reminderBtnShareIos}</span>
-              </button>
-            )}
+            {/* 2. Apple Calendar Direct (webcal://) */}
+            <button
+              type="button"
+              id="open-apple-webcal-btn"
+              onClick={handleWebcalClick}
+              className="w-full inline-flex items-center justify-between px-4 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-900 rounded-xl text-xs font-semibold transition-colors"
+            >
+              <div className="flex items-center gap-2 truncate">
+                <Apple className="w-4 h-4 text-neutral-800 shrink-0" />
+                <span className="truncate">{t.reminderBtnWebcal}</span>
+              </div>
+              <ExternalLink className="w-3.5 h-3.5 opacity-50 shrink-0 ml-2" />
+            </button>
 
-            {/* 3. Google Calendar button */}
+            {/* 3. Google Calendar */}
             <button
               type="button"
               id="open-google-calendar-btn"
@@ -404,20 +439,58 @@ export const CalendarReminderModal: React.FC<CalendarReminderModalProps> = ({
               <ExternalLink className="w-3 h-3 opacity-60 shrink-0 ml-2" />
             </button>
 
-            {/* 4. Phone Calendar (.ics file download for Android / PC) */}
-            {!isIOS && (
+            {/* 4. Phone Calendar (.ics file download) */}
+            <button
+              type="button"
+              id="download-phone-ics-btn"
+              onClick={handleDownloadPhoneIcs}
+              className="w-full inline-flex items-center justify-between px-4 py-2.5 bg-neutral-50 hover:bg-neutral-100 text-neutral-700 border border-neutral-200 rounded-xl text-xs font-medium transition-colors"
+            >
+              <div className="flex items-center gap-2 truncate">
+                <Download className="w-4 h-4 text-neutral-500 shrink-0" />
+                <span className="truncate">{t.reminderBtnPhoneIcs}</span>
+              </div>
+              <span className="text-[10px] text-neutral-400 shrink-0">.ics</span>
+            </button>
+
+            {/* Step-by-step accordion for iOS .ics file */}
+            <div className="border border-neutral-200 rounded-xl overflow-hidden text-xs">
               <button
                 type="button"
-                id="download-phone-ics-btn"
-                onClick={handleDownloadPhoneIcs}
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-neutral-50 hover:bg-neutral-100 text-neutral-700 border border-neutral-200 rounded-xl text-xs font-medium transition-colors"
+                id="toggle-ics-steps-btn"
+                onClick={() => setShowIcsSteps(!showIcsSteps)}
+                className="w-full px-3 py-2 bg-neutral-50 hover:bg-neutral-100 flex items-center justify-between text-[11px] font-medium text-neutral-700 text-left transition-colors"
               >
-                <Smartphone className="w-3.5 h-3.5 text-neutral-500" />
-                <span>{t.reminderBtnPhoneIcs}</span>
+                <span className="flex items-center gap-1.5">
+                  <Smartphone className="w-3.5 h-3.5 text-neutral-500" />
+                  {t.reminderIosStepsTitle}
+                </span>
+                {showIcsSteps ? (
+                  <ChevronUp className="w-3.5 h-3.5 text-neutral-400" />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5 text-neutral-400" />
+                )}
               </button>
-            )}
 
-            {/* 5. Just save date inside note */}
+              {showIcsSteps && (
+                <div className="p-3 bg-white space-y-2 text-[11px] text-neutral-600 border-t border-neutral-200">
+                  <p className="flex items-start gap-1.5">
+                    <span className="font-semibold text-neutral-800 shrink-0">1.</span>
+                    <span>{t.reminderIosStep1}</span>
+                  </p>
+                  <p className="flex items-start gap-1.5">
+                    <span className="font-semibold text-neutral-800 shrink-0">2.</span>
+                    <span>{t.reminderIosStep2}</span>
+                  </p>
+                  <p className="flex items-start gap-1.5">
+                    <span className="font-semibold text-neutral-800 shrink-0">3.</span>
+                    <span>{t.reminderIosStep3}</span>
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* 5. Just save date in note */}
             <button
               type="button"
               id="save-reminder-only-btn"
@@ -429,18 +502,15 @@ export const CalendarReminderModal: React.FC<CalendarReminderModalProps> = ({
             </button>
           </div>
 
-          {/* Help tip with iPhone specific instructions */}
-          <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl text-[11px] text-amber-950 leading-relaxed space-y-1">
+          {/* Help tip */}
+          <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl text-[11px] text-amber-950 leading-relaxed space-y-1">
             <p className="font-semibold flex items-center gap-1">
-              <span>🍏</span> {t.reminderCalendarHint}
+              <span>💡</span> {t.reminderCalendarHint}
             </p>
-            <p className="text-amber-800">
-              {t.reminderIosHint}
-            </p>
+            <p className="text-amber-800">{t.reminderIosHint}</p>
           </div>
         </div>
       </div>
     </div>
   );
 };
-

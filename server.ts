@@ -54,6 +54,8 @@ app.get('/api/calendar/event.ics', (req, res) => {
       'PRODID:-//MikeNote//Reminder//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
+      `X-WR-CALNAME:${cleanTitle}`,
+      'X-WR-TIMEZONE:UTC',
       'BEGIN:VEVENT',
       `UID:${uid}`,
       `DTSTAMP:${nowStr}`,

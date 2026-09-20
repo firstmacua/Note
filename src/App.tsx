@@ -14,7 +14,8 @@ import {
   Check, 
   Globe, 
   Lock,
-  Users
+  Users,
+  Bell,
 } from 'lucide-react';
 import { Note, NoteCategory, CategoryFilter, NotesTab, WorkoutExercise } from './types';
 import { CATEGORIES, INITIAL_NOTES } from './data';
@@ -27,6 +28,7 @@ import { CloudErrorBanner } from './components/CloudErrorBanner';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { useCloudNotes } from './hooks/useCloudNotes';
 import { Language, translations } from './translations';
+import { playReminderSound } from './utils/calendar';
 
 const STORAGE_KEY = 'quick_notes_storage_v1';
 const LANG_STORAGE_KEY = 'mikenote_language';
@@ -134,6 +136,35 @@ export default function App() {
       // Invalid link payload, ignore safely
     }
   }, [currentLang]);
+
+  // In-app active reminder alert with audio chime
+  const [activeAlertNote, setActiveAlertNote] = useState<Note | null>(null);
+  const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const checkReminders = () => {
+      const now = Date.now();
+      for (const note of currentNotesList) {
+        if (!note.reminderAt) continue;
+        const key = `${note.id}-${note.reminderAt}`;
+        // If due within 1 minute or overdue by up to 24 hours and not yet alerted in this session
+        if (
+          note.reminderAt <= now &&
+          note.reminderAt > now - 24 * 60 * 60 * 1000 &&
+          !dismissedAlerts.has(key)
+        ) {
+          setActiveAlertNote(note);
+          setDismissedAlerts((prev) => new Set(prev).add(key));
+          playReminderSound();
+          break;
+        }
+      }
+    };
+
+    checkReminders();
+    const interval = setInterval(checkReminders, 15000);
+    return () => clearInterval(interval);
+  }, [currentNotesList, dismissedAlerts]);
 
   const handleAcceptReceivedNote = () => {
     if (!receivedNote) return;
@@ -727,6 +758,57 @@ export default function App() {
           onClose={() => setReminderNote(null)}
           onSaveReminder={handleSaveReminder}
         />
+      )}
+
+      {/* In-app active reminder notification popup */}
+      {activeAlertNote && (
+        <div
+          id="in-app-reminder-alert"
+          className="fixed bottom-5 right-5 left-5 sm:left-auto sm:w-96 z-50 bg-neutral-900 text-white p-4 rounded-2xl shadow-2xl border border-neutral-800 flex items-start gap-3.5 animate-in slide-in-from-bottom-5 duration-200"
+        >
+          <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+            <Bell className="w-5 h-5 animate-bounce" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[11px] font-semibold text-amber-400 uppercase tracking-wider mb-0.5">
+              {currentLang === 'uk' ? '⏰ Нагадування MikeNote' : '⏰ MikeNote Reminder'}
+            </div>
+            <div className="font-semibold text-sm truncate text-white">
+              {activeAlertNote.title || (currentLang === 'uk' ? 'Нотатка' : 'Note')}
+            </div>
+            {activeAlertNote.content && (
+              <p className="text-xs text-neutral-300 line-clamp-2 mt-1 leading-relaxed">
+                {activeAlertNote.content}
+              </p>
+            )}
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingNote(activeAlertNote);
+                  setActiveAlertNote(null);
+                }}
+                className="px-3 py-1.5 bg-white text-neutral-900 rounded-lg text-xs font-semibold hover:bg-neutral-100 transition-colors"
+              >
+                {currentLang === 'uk' ? 'Відкрити нотатку' : 'Open note'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveAlertNote(null)}
+                className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-lg text-xs font-medium transition-colors"
+              >
+                {currentLang === 'uk' ? 'Закрити' : 'Dismiss'}
+              </button>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActiveAlertNote(null)}
+            className="text-neutral-400 hover:text-white p-1 rounded-md transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       )}
     </div>
   );

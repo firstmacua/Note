@@ -88,6 +88,8 @@ export interface Translations {
   reminderBtnGoogle: string;
   reminderBtnPhoneIcs: string;
   reminderBtnAppleIos: string;
+  reminderBtnWebcal: string;
+  reminderBtnRemindersApp: string;
   reminderBtnShareIos: string;
   reminderSaveToNote: string;
   reminderRemoveFromNote: string;
@@ -98,6 +100,12 @@ export interface Translations {
   reminderOverdue: string;
   reminderCalendarHint: string;
   reminderIosHint: string;
+  reminderIosStepsTitle: string;
+  reminderIosStep1: string;
+  reminderIosStep2: string;
+  reminderIosStep3: string;
+  reminderIframeNotice: string;
+  reminderCopySafariLink: string;
   // Share modal
   shareTitle: string;
   shareSubtitle: string;
@@ -233,6 +241,8 @@ export const translations: Record<Language, Translations> = {
     reminderBtnGoogle: 'Відкрити в Google Календарі',
     reminderBtnPhoneIcs: 'Календар телефону (.ics файл)',
     reminderBtnAppleIos: 'Додати в Apple Календар (iPhone)',
+    reminderBtnWebcal: 'Apple Календар (в 1 тап через підписку)',
+    reminderBtnRemindersApp: 'Додати в Apple «Нагадування» (Reminders)',
     reminderBtnShareIos: 'Надіслати в Календар (через Поділитися)',
     reminderSaveToNote: 'Зберегти дату в нотатці',
     reminderRemoveFromNote: 'Прибрати нагадування з нотатки',
@@ -241,8 +251,14 @@ export const translations: Record<Language, Translations> = {
     reminderBadgePrefix: '⏰',
     reminderUpcoming: 'Заплановано',
     reminderOverdue: 'Минуло',
-    reminderCalendarHint: '💡 Натисніть «Додати в Apple Календар» — відкриється вікно створення події прямо в iOS, де залишиться натиснути «Додати» у верхньому кутку.',
-    reminderIosHint: 'Для iPhone: якщо Safari запитує дозвіл — натисніть «Дозволити», і подія автоматично зʼявиться в додатку «Календар» з будильником.',
+    reminderCalendarHint: '💡 Оберіть найзручніший спосіб нижче: через додаток «Нагадування» або відкриття в Apple Календарі.',
+    reminderIosHint: 'Якщо Safari запитує дозвіл — натисніть «Дозволити», і подія автоматично зʼявиться в додатку «Календар» або «Нагадування».',
+    reminderIosStepsTitle: 'Як додати на iPhone через файл .ics:',
+    reminderIosStep1: 'Натисніть кнопку «Календар телефону (.ics файл)» і потім «Завантажити».',
+    reminderIosStep2: 'У Safari натисніть значок ⬇️ (завантаження) в адресному рядку.',
+    reminderIosStep3: 'Натисніть на завантажений файл і у верхньому кутку оберіть «Додати все».',
+    reminderIframeNotice: '⚠️ Якщо ви відкрили посилання через Telegram або у вікні перегляду, обовʼязково відкрийте його безпосередньо в Safari.',
+    reminderCopySafariLink: 'Скопіювати посилання для Safari',
     shareTitle: 'Поділитися нотаткою',
     shareSubtitle: 'Надішліть нотатку другу через месенджер або скопіюйте посилання',
     shareCopyText: 'Скопіювати текст',
@@ -358,6 +374,8 @@ export const translations: Record<Language, Translations> = {
     reminderBtnGoogle: 'Open in Google Calendar',
     reminderBtnPhoneIcs: 'Phone Calendar (.ics file)',
     reminderBtnAppleIos: 'Add to Apple Calendar (iPhone)',
+    reminderBtnWebcal: 'Apple Calendar (1-tap subscription)',
+    reminderBtnRemindersApp: 'Add to Apple Reminders',
     reminderBtnShareIos: 'Send to Calendar (via Share)',
     reminderSaveToNote: 'Save date to note',
     reminderRemoveFromNote: 'Remove reminder from note',
@@ -366,8 +384,14 @@ export const translations: Record<Language, Translations> = {
     reminderBadgePrefix: '⏰',
     reminderUpcoming: 'Upcoming',
     reminderOverdue: 'Past',
-    reminderCalendarHint: '💡 Tap "Add to Apple Calendar" to open the native iOS event sheet and tap "Add" in the top corner.',
-    reminderIosHint: 'For iPhone: if Safari asks for permission, tap "Allow", and the event will automatically open in Calendar with an alarm.',
+    reminderCalendarHint: '💡 Choose the most convenient method below: via Apple Reminders, direct Apple Calendar, or Google Calendar.',
+    reminderIosHint: 'If Safari prompts for permission, tap "Allow", and the event will automatically appear in your Calendar or Reminders app with an alarm.',
+    reminderIosStepsTitle: 'How to add on iPhone via .ics file:',
+    reminderIosStep1: 'Tap "Phone Calendar (.ics file)" and then "Download".',
+    reminderIosStep2: 'In Safari, tap the ⬇️ downloads icon in the address bar.',
+    reminderIosStep3: 'Tap the downloaded file, then tap "Add All" in the top right corner.',
+    reminderIframeNotice: '⚠️ If opened inside an in-app browser (e.g. Telegram) or preview frame, make sure to open directly in Safari.',
+    reminderCopySafariLink: 'Copy Link for Safari',
     shareTitle: 'Share Note',
     shareSubtitle: 'Send note to a friend via messenger or copy shareable link',
     shareCopyText: 'Copy text',
