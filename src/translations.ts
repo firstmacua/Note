@@ -87,6 +87,8 @@ export interface Translations {
   reminderQuickIn2Days: string;
   reminderBtnGoogle: string;
   reminderBtnPhoneIcs: string;
+  reminderBtnAppleIos: string;
+  reminderBtnShareIos: string;
   reminderSaveToNote: string;
   reminderRemoveFromNote: string;
   reminderSavedSuccess: string;
@@ -95,6 +97,7 @@ export interface Translations {
   reminderUpcoming: string;
   reminderOverdue: string;
   reminderCalendarHint: string;
+  reminderIosHint: string;
   // Share modal
   shareTitle: string;
   shareSubtitle: string;
@@ -228,7 +231,9 @@ export const translations: Record<Language, Translations> = {
     reminderQuickTomorrow: 'Завтра о 09:00',
     reminderQuickIn2Days: 'Через 2 дні',
     reminderBtnGoogle: 'Відкрити в Google Календарі',
-    reminderBtnPhoneIcs: 'Календар телефону (Apple / Android)',
+    reminderBtnPhoneIcs: 'Календар телефону (.ics файл)',
+    reminderBtnAppleIos: 'Додати в Apple Календар (iPhone)',
+    reminderBtnShareIos: 'Надіслати в Календар (через Поділитися)',
     reminderSaveToNote: 'Зберегти дату в нотатці',
     reminderRemoveFromNote: 'Прибрати нагадування з нотатки',
     reminderSavedSuccess: 'Нагадування збережено в нотатці!',
@@ -236,7 +241,8 @@ export const translations: Record<Language, Translations> = {
     reminderBadgePrefix: '⏰',
     reminderUpcoming: 'Заплановано',
     reminderOverdue: 'Минуло',
-    reminderCalendarHint: '💡 При відкритті файлу телефон автоматично запропонує «Додати в Календар» та увімкне системне сповіщення.',
+    reminderCalendarHint: '💡 Натисніть «Додати в Apple Календар» — відкриється вікно створення події прямо в iOS, де залишиться натиснути «Додати» у верхньому кутку.',
+    reminderIosHint: 'Для iPhone: якщо Safari запитує дозвіл — натисніть «Дозволити», і подія автоматично зʼявиться в додатку «Календар» з будильником.',
     shareTitle: 'Поділитися нотаткою',
     shareSubtitle: 'Надішліть нотатку другу через месенджер або скопіюйте посилання',
     shareCopyText: 'Скопіювати текст',
@@ -350,7 +356,9 @@ export const translations: Record<Language, Translations> = {
     reminderQuickTomorrow: 'Tomorrow at 09:00',
     reminderQuickIn2Days: 'In 2 days',
     reminderBtnGoogle: 'Open in Google Calendar',
-    reminderBtnPhoneIcs: 'Phone Calendar (Apple / Android)',
+    reminderBtnPhoneIcs: 'Phone Calendar (.ics file)',
+    reminderBtnAppleIos: 'Add to Apple Calendar (iPhone)',
+    reminderBtnShareIos: 'Send to Calendar (via Share)',
     reminderSaveToNote: 'Save date to note',
     reminderRemoveFromNote: 'Remove reminder from note',
     reminderSavedSuccess: 'Reminder saved to note!',
@@ -358,7 +366,8 @@ export const translations: Record<Language, Translations> = {
     reminderBadgePrefix: '⏰',
     reminderUpcoming: 'Upcoming',
     reminderOverdue: 'Past',
-    reminderCalendarHint: '💡 Opening this file prompts your phone to "Add to Calendar" with a native alarm notification.',
+    reminderCalendarHint: '💡 Tap "Add to Apple Calendar" to open the native iOS event sheet and tap "Add" in the top corner.',
+    reminderIosHint: 'For iPhone: if Safari asks for permission, tap "Allow", and the event will automatically open in Calendar with an alarm.',
     shareTitle: 'Share Note',
     shareSubtitle: 'Send note to a friend via messenger or copy shareable link',
     shareCopyText: 'Copy text',

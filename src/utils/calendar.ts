@@ -61,6 +61,60 @@ export function generateIcsContent(
   ].join('\r\n');
 }
 
+export function isIOSDevice(): boolean {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  const platform = (navigator as unknown as { userAgentData?: { platform?: string } }).userAgentData?.platform || navigator.platform || '';
+  return (
+    /iPad|iPhone|iPod/.test(ua) ||
+    (/Macintosh|MacIntel/.test(platform) && (navigator.maxTouchPoints || 0) > 1)
+  );
+}
+
+export function getIcsServerUrl(
+  title: string,
+  description: string,
+  startDate: Date,
+  durationMinutes = 30
+): string {
+  const params = new URLSearchParams({
+    title: (title || 'MikeNote Нагадування').slice(0, 120),
+    details: (description || '').slice(0, 800),
+    start: startDate.getTime().toString(),
+    duration: durationMinutes.toString(),
+  });
+  return `/api/calendar/event.ics?${params.toString()}`;
+}
+
+export async function shareIcsFile(
+  filename: string,
+  icsContent: string,
+  title: string
+): Promise<boolean> {
+  if (typeof navigator === 'undefined' || !navigator.share) {
+    return false;
+  }
+  try {
+    const file = new File([icsContent], filename.endsWith('.ics') ? filename : `${filename}.ics`, {
+      type: 'text/calendar;charset=utf-8',
+    });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title,
+      });
+      return true;
+    }
+  } catch (err) {
+    // If user cancelled, don't crash
+    if ((err as Error)?.name === 'AbortError') {
+      return true;
+    }
+    console.warn('Share API failed:', err);
+  }
+  return false;
+}
+
 export function downloadIcsFile(filename: string, icsContent: string): void {
   const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
   const url = URL.createObjectURL(blob);

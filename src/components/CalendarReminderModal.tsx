@@ -8,6 +8,8 @@ import {
   Trash2,
   ExternalLink,
   Clock,
+  Apple,
+  Share2,
 } from 'lucide-react';
 import { Note } from '../types';
 import { Translations, Language } from '../translations';
@@ -16,6 +18,9 @@ import {
   generateIcsContent,
   downloadIcsFile,
   formatReminderDisplay,
+  isIOSDevice,
+  getIcsServerUrl,
+  shareIcsFile,
 } from '../utils/calendar';
 
 interface CalendarReminderModalProps {
@@ -33,6 +38,8 @@ export const CalendarReminderModal: React.FC<CalendarReminderModalProps> = ({
   onClose,
   onSaveReminder,
 }) => {
+  const isIOS = isIOSDevice();
+
   // Format datetime-local input string: YYYY-MM-DDTHH:mm
   const formatInputDateTime = (date: Date): string => {
     const pad = (n: number) => n.toString().padStart(2, '0');
@@ -58,6 +65,18 @@ export const CalendarReminderModal: React.FC<CalendarReminderModalProps> = ({
     formatInputDateTime(getInitialDate())
   );
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [canShareFile, setCanShareFile] = useState(false);
+
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && navigator.canShare) {
+      try {
+        const testFile = new File([''], 'test.ics', { type: 'text/calendar' });
+        setCanShareFile(Boolean(navigator.canShare({ files: [testFile] })));
+      } catch {
+        setCanShareFile(false);
+      }
+    }
+  }, []);
 
   // Close on Escape key
   useEffect(() => {
@@ -104,14 +123,44 @@ export const CalendarReminderModal: React.FC<CalendarReminderModalProps> = ({
     setSelectedDateStr(formatInputDateTime(d));
   };
 
+  const targetDate = getSelectedDate();
+  const serverIcsUrl = getIcsServerUrl(
+    note.title || (currentLang === 'uk' ? 'Нотатка MikeNote' : 'MikeNote Note'),
+    note.content || '',
+    targetDate
+  );
+
+  const handleAppleIosCalendarClick = () => {
+    onSaveReminder(note.id, targetDate.getTime());
+    setFeedbackMessage(t.reminderSavedSuccess);
+  };
+
+  const handleShareIcs = async () => {
+    const ics = generateIcsContent(
+      note.title || 'MikeNote Нагадування',
+      note.content || '',
+      targetDate
+    );
+    const cleanFilename = (note.title || 'reminder')
+      .replace(/[^a-zA-Z0-9а-яА-ЯіїєґІЇЄҐ_-]/g, '_')
+      .substring(0, 30);
+    const shared = await shareIcsFile(
+      cleanFilename,
+      ics,
+      note.title || 'MikeNote Нагадування'
+    );
+    if (shared) {
+      onSaveReminder(note.id, targetDate.getTime());
+      setFeedbackMessage(t.reminderSavedSuccess);
+    }
+  };
+
   const handleOpenGoogleCalendar = () => {
-    const targetDate = getSelectedDate();
     const googleUrl = getGoogleCalendarUrl(
       note.title || 'Нотатка MikeNote',
       note.content || '',
       targetDate
     );
-    // Also save reminder to note
     onSaveReminder(note.id, targetDate.getTime());
     window.open(googleUrl, '_blank', 'noopener,noreferrer');
     setFeedbackMessage(t.reminderSavedSuccess);
@@ -121,7 +170,6 @@ export const CalendarReminderModal: React.FC<CalendarReminderModalProps> = ({
   };
 
   const handleDownloadPhoneIcs = () => {
-    const targetDate = getSelectedDate();
     const ics = generateIcsContent(
       note.title || 'Нотатка MikeNote',
       note.content || '',
@@ -132,7 +180,6 @@ export const CalendarReminderModal: React.FC<CalendarReminderModalProps> = ({
       .substring(0, 30);
     downloadIcsFile(`${cleanFilename}.ics`, ics);
 
-    // Also persist reminder on note
     onSaveReminder(note.id, targetDate.getTime());
     setFeedbackMessage(t.reminderSavedSuccess);
     setTimeout(() => {
@@ -141,7 +188,6 @@ export const CalendarReminderModal: React.FC<CalendarReminderModalProps> = ({
   };
 
   const handleSaveOnly = () => {
-    const targetDate = getSelectedDate();
     onSaveReminder(note.id, targetDate.getTime());
     setFeedbackMessage(t.reminderSavedSuccess);
     setTimeout(() => {
@@ -157,7 +203,7 @@ export const CalendarReminderModal: React.FC<CalendarReminderModalProps> = ({
     }, 900);
   };
 
-  const selectedTimestamp = getSelectedDate().getTime();
+  const selectedTimestamp = targetDate.getTime();
   const readableSelected = formatReminderDisplay(selectedTimestamp, currentLang);
 
   return (
@@ -315,47 +361,86 @@ export const CalendarReminderModal: React.FC<CalendarReminderModalProps> = ({
 
           {/* Calendar Action Buttons */}
           <div className="space-y-2 pt-1">
-            {/* 1. Phone Calendar (.ics) button */}
-            <button
-              type="button"
-              id="download-phone-ics-btn"
-              onClick={handleDownloadPhoneIcs}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-semibold transition-colors shadow-xs"
+            {/* 1. Direct Apple Calendar / iPhone Link (Native iOS Event Sheet) */}
+            <a
+              id="open-apple-calendar-link"
+              href={serverIcsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={handleAppleIosCalendarClick}
+              className="w-full inline-flex items-center justify-between px-4 py-3 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-semibold transition-all shadow-xs group"
             >
-              <Smartphone className="w-4 h-4 text-emerald-400" />
-              <span>{t.reminderBtnPhoneIcs}</span>
-            </button>
+              <div className="flex items-center gap-2.5 truncate">
+                <Apple className="w-4 h-4 text-white shrink-0" />
+                <span className="truncate">{t.reminderBtnAppleIos}</span>
+              </div>
+              <ExternalLink className="w-3.5 h-3.5 opacity-60 group-hover:opacity-100 shrink-0 ml-2" />
+            </a>
 
-            {/* 2. Google Calendar button */}
+            {/* 2. Web Share API for iOS (opens system share sheet with Calendar option) */}
+            {canShareFile && (
+              <button
+                type="button"
+                id="share-apple-calendar-btn"
+                onClick={handleShareIcs}
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 rounded-xl text-xs font-medium transition-colors"
+              >
+                <Share2 className="w-3.5 h-3.5 text-neutral-600" />
+                <span>{t.reminderBtnShareIos}</span>
+              </button>
+            )}
+
+            {/* 3. Google Calendar button */}
             <button
               type="button"
               id="open-google-calendar-btn"
               onClick={handleOpenGoogleCalendar}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-medium transition-colors"
+              className="w-full inline-flex items-center justify-between px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-medium transition-colors"
             >
-              <CalendarIcon className="w-4 h-4 text-blue-600" />
-              <span>{t.reminderBtnGoogle}</span>
-              <ExternalLink className="w-3 h-3 opacity-60 ml-0.5" />
+              <div className="flex items-center gap-2 truncate">
+                <CalendarIcon className="w-4 h-4 text-blue-600 shrink-0" />
+                <span className="truncate">{t.reminderBtnGoogle}</span>
+              </div>
+              <ExternalLink className="w-3 h-3 opacity-60 shrink-0 ml-2" />
             </button>
 
-            {/* 3. Just save to note */}
+            {/* 4. Phone Calendar (.ics file download for Android / PC) */}
+            {!isIOS && (
+              <button
+                type="button"
+                id="download-phone-ics-btn"
+                onClick={handleDownloadPhoneIcs}
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-neutral-50 hover:bg-neutral-100 text-neutral-700 border border-neutral-200 rounded-xl text-xs font-medium transition-colors"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-neutral-500" />
+                <span>{t.reminderBtnPhoneIcs}</span>
+              </button>
+            )}
+
+            {/* 5. Just save date inside note */}
             <button
               type="button"
               id="save-reminder-only-btn"
               onClick={handleSaveOnly}
-              className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-xl text-xs font-medium transition-colors"
+              className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded-xl text-xs font-medium transition-colors"
             >
-              <Check className="w-3.5 h-3.5 text-neutral-500" />
+              <Check className="w-3.5 h-3.5 text-neutral-400" />
               <span>{t.reminderSaveToNote}</span>
             </button>
           </div>
 
-          {/* Help tip */}
-          <div className="p-2.5 bg-amber-50/70 border border-amber-200/80 rounded-xl text-[11px] text-amber-900 leading-relaxed">
-            {t.reminderCalendarHint}
+          {/* Help tip with iPhone specific instructions */}
+          <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl text-[11px] text-amber-950 leading-relaxed space-y-1">
+            <p className="font-semibold flex items-center gap-1">
+              <span>🍏</span> {t.reminderCalendarHint}
+            </p>
+            <p className="text-amber-800">
+              {t.reminderIosHint}
+            </p>
           </div>
         </div>
       </div>
     </div>
   );
 };
+
