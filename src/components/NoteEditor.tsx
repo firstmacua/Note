@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Check, X, Pin, Globe, Lock } from 'lucide-react';
-import { Note, NoteCategory } from '../types';
+import { Plus, Check, X, Pin, Globe, Lock, Trash2, Dumbbell } from 'lucide-react';
+import { Note, NoteCategory, WorkoutExercise } from '../types';
 import { CATEGORIES } from '../data';
 import { Translations } from '../translations';
 
@@ -15,8 +15,54 @@ interface NoteEditorProps {
     isPinned: boolean;
     isPublic: boolean;
     authorName: string;
+    exercises?: WorkoutExercise[];
   }) => void;
   onCancel?: () => void;
+}
+
+const createEmptyExercise = (): WorkoutExercise => ({
+  id: `ex-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+  name: '',
+  sets: '',
+  reps: '',
+});
+
+function parseExercisesFromText(content: string): { exercises: WorkoutExercise[]; notes: string } {
+  if (!content) return { exercises: [], notes: '' };
+  const lines = content.split('\n');
+  const foundExercises: WorkoutExercise[] = [];
+  const noteLines: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const match = trimmed.match(
+      /^(?:\d+[\.\)]\s*)?(.+?)(?:\s*[-—:]\s*(\d+)\s*(?:підх\.?|подх\.?|sets?)?\s*[×x*]\s*(\d+(?:-\d+)?)\s*(?:повт\.?|повтор\.?|reps?)?)?$/i
+    );
+    if (match && (match[2] || match[3])) {
+      foundExercises.push({
+        id: `ex-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        name: match[1].trim(),
+        sets: match[2] || '',
+        reps: match[3] || '',
+      });
+    } else {
+      noteLines.push(trimmed);
+    }
+  }
+
+  return { exercises: foundExercises, notes: noteLines.join('\n') };
+}
+
+function extractExtraNotes(content: string, exercises: WorkoutExercise[]): string {
+  if (!content) return '';
+  const lines = content.split('\n');
+  const remaining = lines.filter((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return false;
+    return !exercises.some((ex) => ex.name && trimmed.includes(ex.name));
+  });
+  return remaining.join('\n').trim();
 }
 
 export const NoteEditor: React.FC<NoteEditorProps> = ({
@@ -34,16 +80,37 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const [authorName, setAuthorName] = useState(() => {
     return localStorage.getItem('guest_author_name') || '';
   });
+  const [exercises, setExercises] = useState<WorkoutExercise[]>([createEmptyExercise()]);
+  const [workoutNotes, setWorkoutNotes] = useState('');
   const [error, setError] = useState('');
+
+  const isWorkoutCategory =
+    category === 'Тренування' || category === 'Тренировка' || category === 'Workout';
 
   useEffect(() => {
     if (initialNote) {
       setTitle(initialNote.title);
       setContent(initialNote.content);
-      setCategory((initialNote.category as NoteCategory) || 'Загальне');
+      const cat = (initialNote.category as NoteCategory) || 'Загальне';
+      setCategory(cat);
       setIsPinned(initialNote.isPinned);
       setIsPublic(Boolean(initialNote.isPublic));
       setAuthorName(initialNote.authorName || '');
+
+      const isWorkout =
+        cat === 'Тренування' || cat === 'Тренировка' || cat === 'Workout';
+
+      if (initialNote.exercises && initialNote.exercises.length > 0) {
+        setExercises(initialNote.exercises);
+        setWorkoutNotes(extractExtraNotes(initialNote.content, initialNote.exercises));
+      } else if (isWorkout) {
+        const parsed = parseExercisesFromText(initialNote.content);
+        setExercises(parsed.exercises.length > 0 ? parsed.exercises : [createEmptyExercise()]);
+        setWorkoutNotes(parsed.notes);
+      } else {
+        setExercises([createEmptyExercise()]);
+        setWorkoutNotes('');
+      }
       setError('');
     } else {
       setTitle('');
@@ -51,13 +118,63 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       setCategory('Загальне');
       setIsPinned(false);
       setIsPublic(defaultIsPublic);
+      setExercises([createEmptyExercise()]);
+      setWorkoutNotes('');
       setError('');
     }
   }, [initialNote, defaultIsPublic]);
 
+  const handleAddExercise = () => {
+    setExercises((prev) => [...prev, createEmptyExercise()]);
+  };
+
+  const handleRemoveExercise = (id: string) => {
+    setExercises((prev) => (prev.length > 1 ? prev.filter((ex) => ex.id !== id) : prev));
+  };
+
+  const handleUpdateExercise = (
+    id: string,
+    field: 'name' | 'sets' | 'reps',
+    value: string
+  ) => {
+    setExercises((prev) =>
+      prev.map((ex) => (ex.id === id ? { ...ex, [field]: value } : ex))
+    );
+    if (error) setError('');
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim() && !title.trim()) {
+
+    let finalContent = content.trim();
+    let finalExercises: WorkoutExercise[] | undefined = undefined;
+
+    if (isWorkoutCategory) {
+      const validExercises = exercises.filter(
+        (ex) => ex.name.trim() || ex.sets.trim() || ex.reps.trim()
+      );
+
+      if (validExercises.length > 0) {
+        finalExercises = validExercises;
+        const formatted = validExercises
+          .map((ex, idx) => {
+            const parts: string[] = [];
+            if (ex.sets.trim()) parts.push(`${ex.sets.trim()} ${t.setsShort}`);
+            if (ex.reps.trim()) parts.push(`${ex.reps.trim()} ${t.repsShort}`);
+            const detail = parts.length > 0 ? ` — ${parts.join(' × ')}` : '';
+            return `${idx + 1}. ${ex.name.trim() || 'Вправа'}${detail}`;
+          })
+          .join('\n');
+
+        finalContent = workoutNotes.trim()
+          ? `${formatted}\n\n${workoutNotes.trim()}`
+          : formatted;
+      } else if (workoutNotes.trim()) {
+        finalContent = workoutNotes.trim();
+      }
+    }
+
+    if (!finalContent && !title.trim()) {
       setError(t.editorErrorRequired);
       return;
     }
@@ -68,18 +185,27 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     }
 
     onSave({
-      title: title.trim() || (t.appName === 'MikeNote' ? (t.allCategories === 'Всі' ? 'Без назви' : 'Untitled') : 'Untitled'),
-      content: content.trim(),
+      title:
+        title.trim() ||
+        (t.appName === 'MikeNote'
+          ? t.allCategories === 'Всі'
+            ? 'Без назви'
+            : 'Untitled'
+          : 'Untitled'),
+      content: finalContent,
       category,
       isPinned,
       isPublic,
       authorName: trimmedAuthor || t.cardGuest,
+      exercises: finalExercises,
     });
 
     if (!initialNote) {
       setTitle('');
       setContent('');
       setIsPinned(false);
+      setExercises([createEmptyExercise()]);
+      setWorkoutNotes('');
       setError('');
     }
   };
@@ -117,17 +243,133 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         </button>
       </div>
 
-      <textarea
-        id="note-content-input"
-        value={content}
-        onChange={(e) => {
-          setContent(e.target.value);
-          if (error) setError('');
-        }}
-        rows={initialNote ? 5 : 3}
-        placeholder={t.editorContentPlaceholder}
-        className="w-full text-sm text-neutral-800 placeholder:text-neutral-400 bg-transparent border-none outline-none resize-y min-h-[72px]"
-      />
+      {/* Workout mode: Exercise Name (yellow box) + Sets & Reps columns */}
+      {isWorkoutCategory ? (
+        <div id="workout-editor-section" className="mb-4">
+          <div className="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-neutral-100">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-neutral-800">
+              <Dumbbell className="w-4 h-4 text-orange-600" />
+              <span>{t.workoutSectionTitle}</span>
+            </div>
+            <span className="text-[11px] text-neutral-400">
+              {exercises.length} {exercises.length === 1 ? 'вправа' : 'вправ'}
+            </span>
+          </div>
+
+          {/* Column labels for desktop view */}
+          <div className="hidden sm:flex items-center gap-2 mb-1 text-[11px] font-medium text-neutral-500 px-1">
+            <span className="flex-1 text-amber-700 font-semibold">
+              {t.exerciseNamePlaceholder.replace(/\s*\(.*?\)/, '')}
+            </span>
+            <span className="w-24 text-center text-neutral-800 font-semibold">
+              {t.exerciseSetsLabel}
+            </span>
+            <span className="w-28 text-center text-neutral-800 font-semibold">
+              {t.exerciseRepsLabel}
+            </span>
+            {exercises.length > 1 && <span className="w-8" />}
+          </div>
+
+          {/* Exercise items list */}
+          <div className="space-y-2">
+            {exercises.map((ex, index) => (
+              <div
+                key={ex.id}
+                id={`exercise-row-${index}`}
+                className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-neutral-50/50 p-2 sm:p-0 rounded-lg border border-neutral-100 sm:border-transparent"
+              >
+                {/* Yellow input box as drawn in user screenshot */}
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    id={`exercise-name-${index}`}
+                    value={ex.name}
+                    onChange={(e) => handleUpdateExercise(ex.id, 'name', e.target.value)}
+                    placeholder={t.exerciseNamePlaceholder}
+                    className="w-full text-sm font-medium text-neutral-900 placeholder:text-neutral-400 bg-amber-50/40 border border-amber-300 hover:border-amber-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-200 rounded-lg px-3 py-2 outline-none transition-all shadow-2xs"
+                  />
+                </div>
+
+                {/* Black box 1: Sets (Підходи) */}
+                <div className="w-full sm:w-24 shrink-0 flex items-center gap-1">
+                  <span className="sm:hidden text-xs text-neutral-500 w-20">
+                    {t.exerciseSetsLabel}:
+                  </span>
+                  <input
+                    type="text"
+                    id={`exercise-sets-${index}`}
+                    value={ex.sets}
+                    onChange={(e) => handleUpdateExercise(ex.id, 'sets', e.target.value)}
+                    placeholder={t.exerciseSetsPlaceholder}
+                    className="w-full text-sm text-neutral-900 placeholder:text-neutral-400 bg-white border border-neutral-300 hover:border-neutral-400 focus:border-neutral-900 focus:ring-1 focus:ring-neutral-200 rounded-lg px-2.5 py-2 text-center outline-none transition-all font-mono"
+                  />
+                </div>
+
+                {/* Black box 2: Reps (Повторення) */}
+                <div className="w-full sm:w-28 shrink-0 flex items-center gap-1">
+                  <span className="sm:hidden text-xs text-neutral-500 w-20">
+                    {t.exerciseRepsLabel}:
+                  </span>
+                  <input
+                    type="text"
+                    id={`exercise-reps-${index}`}
+                    value={ex.reps}
+                    onChange={(e) => handleUpdateExercise(ex.id, 'reps', e.target.value)}
+                    placeholder={t.exerciseRepsPlaceholder}
+                    className="w-full text-sm text-neutral-900 placeholder:text-neutral-400 bg-white border border-neutral-300 hover:border-neutral-400 focus:border-neutral-900 focus:ring-1 focus:ring-neutral-200 rounded-lg px-2.5 py-2 text-center outline-none transition-all font-mono"
+                  />
+                </div>
+
+                {/* Delete exercise button */}
+                {exercises.length > 1 && (
+                  <button
+                    type="button"
+                    id={`remove-exercise-${index}`}
+                    onClick={() => handleRemoveExercise(ex.id)}
+                    title={t.removeExerciseBtn}
+                    className="p-2 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors shrink-0 flex items-center justify-center self-end sm:self-center"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Add exercise row button */}
+          <button
+            type="button"
+            id="add-exercise-btn"
+            onClick={handleAddExercise}
+            className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-medium text-amber-800 bg-amber-50 hover:bg-amber-100/80 border border-amber-200/90 px-3 py-1.5 rounded-lg transition-colors shadow-2xs"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            {t.addExerciseBtn}
+          </button>
+
+          {/* Optional notes / comments */}
+          <textarea
+            id="workout-notes-input"
+            value={workoutNotes}
+            onChange={(e) => setWorkoutNotes(e.target.value)}
+            rows={2}
+            placeholder={t.workoutNotesPlaceholder}
+            className="mt-3 w-full text-xs text-neutral-700 placeholder:text-neutral-400 bg-neutral-50/70 border border-neutral-200 rounded-lg p-2.5 outline-none focus:border-neutral-400 resize-y"
+          />
+        </div>
+      ) : (
+        <textarea
+          id="note-content-input"
+          value={content}
+          onChange={(e) => {
+            setContent(e.target.value);
+            if (error) setError('');
+          }}
+          rows={initialNote ? 5 : 3}
+          placeholder={t.editorContentPlaceholder}
+          className="w-full text-sm text-neutral-800 placeholder:text-neutral-400 bg-transparent border-none outline-none resize-y min-h-[72px]"
+        />
+      )}
 
       {error && (
         <p id="note-editor-error" className="text-xs text-rose-600 mb-3">

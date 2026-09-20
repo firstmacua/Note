@@ -78,6 +78,7 @@ export function useCloudNotes(initialLocalNotes: Note[]) {
               isPublic: true,
               authorName: String(data.authorName || 'Guest'),
               authorId: String(data.authorId || ''),
+              exercises: Array.isArray(data.exercises) ? data.exercises : undefined,
               createdAt: parseTimestamp(data.createdAt),
               updatedAt: parseTimestamp(data.updatedAt),
             });
@@ -131,6 +132,7 @@ export function useCloudNotes(initialLocalNotes: Note[]) {
               isPinned: Boolean(data.isPinned),
               isPublic: false,
               authorName: currentUser.displayName || currentUser.email || 'Я',
+              exercises: Array.isArray(data.exercises) ? data.exercises : undefined,
               createdAt: parseTimestamp(data.createdAt),
               updatedAt: parseTimestamp(data.updatedAt),
             });
@@ -229,7 +231,7 @@ export function useCloudNotes(initialLocalNotes: Note[]) {
     if (note.isPublic) {
       try {
         const docRef = doc(db, 'public_notes', note.id);
-        await setDoc(docRef, {
+        const payload: Record<string, unknown> = {
           title: note.title,
           content: note.content,
           category: note.category,
@@ -240,14 +242,18 @@ export function useCloudNotes(initialLocalNotes: Note[]) {
           createdAt: note.createdAt,
           updatedAt: note.updatedAt,
           savedAt: serverTimestamp(),
-        });
+        };
+        if (note.exercises) {
+          payload.exercises = note.exercises;
+        }
+        await setDoc(docRef, payload);
       } catch (err) {
         console.error('Failed to save public note:', err);
       }
     } else if (currentUser) {
       try {
         const docRef = doc(db, 'users', currentUser.uid, 'notes', note.id);
-        await setDoc(docRef, {
+        const payload: Record<string, unknown> = {
           userId: currentUser.uid,
           title: note.title,
           content: note.content,
@@ -257,7 +263,11 @@ export function useCloudNotes(initialLocalNotes: Note[]) {
           createdAt: note.createdAt,
           updatedAt: note.updatedAt,
           syncedAt: serverTimestamp(),
-        });
+        };
+        if (note.exercises) {
+          payload.exercises = note.exercises;
+        }
+        await setDoc(docRef, payload);
       } catch (err) {
         console.error('Failed to save private cloud note:', err);
       }

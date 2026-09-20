@@ -53,6 +53,18 @@ export interface Translations {
   editorUpdateBtn: string;
   editorCancelBtn: string;
   editorErrorRequired: string;
+  // Workout-specific translations
+  exerciseNamePlaceholder: string;
+  exerciseSetsLabel: string;
+  exerciseRepsLabel: string;
+  exerciseSetsPlaceholder: string;
+  exerciseRepsPlaceholder: string;
+  addExerciseBtn: string;
+  removeExerciseBtn: string;
+  workoutSectionTitle: string;
+  workoutNotesPlaceholder: string;
+  setsShort: string;
+  repsShort: string;
   // Card
   cardJustNow: string;
   cardGuest: string;
@@ -167,6 +179,17 @@ export const translations: Record<Language, Translations> = {
     editorUpdateBtn: 'Зберегти зміни',
     editorCancelBtn: 'Скасувати',
     editorErrorRequired: 'Будь ласка, введіть текст або заголовок нотатки',
+    exerciseNamePlaceholder: 'Назва вправи (напр. Жим лежа)',
+    exerciseSetsLabel: 'Підходи',
+    exerciseRepsLabel: 'Повторення',
+    exerciseSetsPlaceholder: 'Підходи (напр. 4)',
+    exerciseRepsPlaceholder: 'Повторення (напр. 10)',
+    addExerciseBtn: '+ Додати вправу',
+    removeExerciseBtn: 'Видалити вправу',
+    workoutSectionTitle: 'Вправи тренування',
+    workoutNotesPlaceholder: 'Додаткові примітки до тренування (необовʼязково)...',
+    setsShort: 'підх.',
+    repsShort: 'повт.',
     cardJustNow: 'Щойно',
     cardGuest: 'Гість',
     cardPublicBadge: 'Загальна',
@@ -260,6 +283,17 @@ export const translations: Record<Language, Translations> = {
     editorUpdateBtn: 'Save Changes',
     editorCancelBtn: 'Cancel',
     editorErrorRequired: 'Please enter note title or content',
+    exerciseNamePlaceholder: 'Exercise name (e.g. Bench Press)',
+    exerciseSetsLabel: 'Sets',
+    exerciseRepsLabel: 'Reps',
+    exerciseSetsPlaceholder: 'Sets (e.g. 4)',
+    exerciseRepsPlaceholder: 'Reps (e.g. 10)',
+    addExerciseBtn: '+ Add Exercise',
+    removeExerciseBtn: 'Remove exercise',
+    workoutSectionTitle: 'Workout Exercises',
+    workoutNotesPlaceholder: 'Additional workout notes (optional)...',
+    setsShort: 'sets',
+    repsShort: 'reps',
     cardJustNow: 'Just now',
     cardGuest: 'Guest',
     cardPublicBadge: 'Public',

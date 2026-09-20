@@ -16,7 +16,7 @@ import {
   Lock,
   Users
 } from 'lucide-react';
-import { Note, NoteCategory, CategoryFilter, NotesTab } from './types';
+import { Note, NoteCategory, CategoryFilter, NotesTab, WorkoutExercise } from './types';
 import { CATEGORIES, INITIAL_NOTES } from './data';
 import { NoteEditor } from './components/NoteEditor';
 import { NoteCard } from './components/NoteCard';
@@ -181,6 +181,7 @@ export default function App() {
     isPinned: boolean;
     isPublic: boolean;
     authorName: string;
+    exercises?: WorkoutExercise[];
   }) => {
     const newNote: Note = {
       id: `note-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
@@ -190,6 +191,7 @@ export default function App() {
       isPinned: data.isPinned,
       isPublic: data.isPublic,
       authorName: data.authorName,
+      exercises: data.exercises,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -214,6 +216,7 @@ export default function App() {
     isPinned: boolean;
     isPublic: boolean;
     authorName: string;
+    exercises?: WorkoutExercise[];
   }) => {
     if (!editingNote) return;
 
@@ -225,6 +228,7 @@ export default function App() {
       isPinned: data.isPinned,
       isPublic: data.isPublic,
       authorName: data.authorName,
+      exercises: data.exercises,
       updatedAt: Date.now(),
     };
 

@@ -6,8 +6,16 @@ export type NoteCategory =
   | 'Покупки'
   | 'Тренування'
   | 'Тренировка'
+  | 'Workout'
   | 'Общее'
   | 'Личное';
+
+export interface WorkoutExercise {
+  id: string;
+  name: string;
+  sets: string;
+  reps: string;
+}
 
 export interface Note {
   id: string;
@@ -21,6 +29,7 @@ export interface Note {
   isPublic?: boolean;
   authorName?: string;
   authorId?: string;
+  exercises?: WorkoutExercise[];
 }
 
 export type CategoryFilter = 'all' | string;

@@ -153,7 +153,38 @@ export const NoteCard: React.FC<NoteCardProps> = ({
         </div>
 
         {/* Content */}
-        {note.content ? (
+        {note.exercises && note.exercises.length > 0 ? (
+          <div id={`note-exercises-${note.id}`} className="space-y-1.5 mb-4">
+            {note.exercises.map((ex, idx) => (
+              <div
+                key={ex.id || idx}
+                className="flex items-center justify-between gap-2 bg-neutral-50/90 border border-neutral-200/70 rounded-lg px-2.5 py-1.5 text-xs"
+              >
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-neutral-400 font-mono text-[10px] w-3.5 shrink-0">
+                    {idx + 1}.
+                  </span>
+                  <span className="font-medium text-neutral-900 truncate">
+                    {ex.name || (currentLang === 'uk' ? 'Вправа' : 'Exercise')}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 shrink-0 font-mono text-[11px]">
+                  {ex.sets && (
+                    <span className="bg-white border border-neutral-200/90 text-neutral-800 px-1.5 py-0.5 rounded shadow-2xs">
+                      {ex.sets} {currentLang === 'uk' ? 'підх.' : 'sets'}
+                    </span>
+                  )}
+                  {ex.sets && ex.reps && <span className="text-neutral-400 text-xs">×</span>}
+                  {ex.reps && (
+                    <span className="bg-white border border-neutral-200/90 text-neutral-800 px-1.5 py-0.5 rounded shadow-2xs">
+                      {ex.reps} {currentLang === 'uk' ? 'повт.' : 'reps'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : note.content ? (
           <p
             id={`note-content-${note.id}`}
             className="text-sm text-neutral-700 whitespace-pre-wrap break-words leading-relaxed mb-4"
