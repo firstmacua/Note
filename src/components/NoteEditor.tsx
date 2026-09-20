@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Check, X, Pin, Globe, Lock, Trash2, Dumbbell } from 'lucide-react';
+import { Plus, Check, X, Pin, Globe, Lock, Trash2, Dumbbell, Sparkles } from 'lucide-react';
 import { Note, NoteCategory, WorkoutExercise } from '../types';
 import { CATEGORIES } from '../data';
 import { Translations } from '../translations';
@@ -84,8 +84,16 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const [workoutNotes, setWorkoutNotes] = useState('');
   const [error, setError] = useState('');
 
+  // AI Idea Assistant state inside editor
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState<string | null>(null);
+  const [showInlineAiHelper, setShowInlineAiHelper] = useState(false);
+
   const isWorkoutCategory =
     category === 'Тренування' || category === 'Тренировка' || category === 'Workout';
+  const isIdeasCategory =
+    category === 'Ідеї' || (category as string) === 'Идеи' || (category as string) === 'Ideas';
 
   useEffect(() => {
     if (initialNote) {
@@ -141,6 +149,40 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       prev.map((ex) => (ex.id === id ? { ...ex, [field]: value } : ex))
     );
     if (error) setError('');
+  };
+
+  const handleGenerateAiIdeas = async () => {
+    if (!aiPrompt.trim() || isAiLoading) return;
+    setIsAiLoading(true);
+    setAiResult(null);
+
+    try {
+      const response = await fetch('/api/generate-idea', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: aiPrompt.trim(),
+          language: t.appName === 'MikeNote' && t.allCategories === 'Всі' ? 'uk' : 'en',
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Помилка');
+      }
+      setAiResult(data.result || '');
+    } catch (err: any) {
+      console.error('Failed inline AI ideas:', err);
+      let msg = err?.message || '';
+      if (typeof msg === 'string' && (msg.includes('503') || msg.includes('high demand') || msg.includes('UNAVAILABLE') || msg.includes('перевантаж'))) {
+        msg = 'ШІ-сервіс зараз перевантажений. Спробуйте ще раз через кілька секунд.';
+      } else if (!msg || msg === 'Помилка') {
+        msg = 'Не вдалося згенерувати ідеї. Будь ласка, спробуйте ще раз.';
+      }
+      setAiResult(msg);
+    } finally {
+      setIsAiLoading(false);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -358,17 +400,92 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           />
         </div>
       ) : (
-        <textarea
-          id="note-content-input"
-          value={content}
-          onChange={(e) => {
-            setContent(e.target.value);
-            if (error) setError('');
-          }}
-          rows={initialNote ? 5 : 3}
-          placeholder={t.editorContentPlaceholder}
-          className="w-full text-sm text-neutral-800 placeholder:text-neutral-400 bg-transparent border-none outline-none resize-y min-h-[72px]"
-        />
+        <>
+          {isIdeasCategory && (
+            <div
+              id="inline-ideas-ai-helper"
+              className="mb-3 p-3 bg-amber-50/80 border border-amber-200/90 rounded-xl text-xs"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 font-medium text-amber-900">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <span>{t.ideaAssistantTitle}</span>
+                </div>
+                <button
+                  type="button"
+                  id="toggle-inline-ai-helper-btn"
+                  onClick={() => setShowInlineAiHelper(!showInlineAiHelper)}
+                  className="text-amber-800 hover:text-amber-950 font-medium text-[11px] underline"
+                >
+                  {showInlineAiHelper ? 'Згорнути' : '✨ Підібрати ідеї ШІ...'}
+                </button>
+              </div>
+
+              {showInlineAiHelper && (
+                <div className="mt-2.5 space-y-2 pt-2 border-t border-amber-200/60">
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      id="inline-ai-prompt-input"
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleGenerateAiIdeas();
+                        }
+                      }}
+                      placeholder={t.ideaInputPlaceholder}
+                      className="flex-1 bg-white border border-amber-300 focus:border-amber-500 rounded-lg px-2.5 py-1.5 text-xs text-neutral-900 outline-none"
+                    />
+                    <button
+                      type="button"
+                      id="inline-ai-submit-btn"
+                      onClick={handleGenerateAiIdeas}
+                      disabled={!aiPrompt.trim() || isAiLoading}
+                      className="px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 disabled:bg-neutral-300 text-white rounded-lg text-xs font-medium shrink-0 flex items-center gap-1 transition-colors"
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      <span>{isAiLoading ? '...' : t.ideaSendBtn}</span>
+                    </button>
+                  </div>
+
+                  {aiResult && (
+                    <div className="p-2.5 bg-white border border-amber-200 rounded-lg text-neutral-800 text-xs shadow-2xs">
+                      <div className="whitespace-pre-wrap mb-2 leading-relaxed">{aiResult}</div>
+                      <button
+                        type="button"
+                        id="insert-ai-result-btn"
+                        onClick={() => {
+                          setContent((prev) => (prev ? `${prev}\n\n${aiResult}` : aiResult));
+                          if (!title.trim() && aiPrompt.trim()) {
+                            setTitle(`Ідеї: ${aiPrompt.trim()}`);
+                          }
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-md text-[11px] font-medium transition-colors"
+                      >
+                        <Plus className="w-3 h-3 text-amber-700" />
+                        <span>Додати в текст нотатки</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          <textarea
+            id="note-content-input"
+            value={content}
+            onChange={(e) => {
+              setContent(e.target.value);
+              if (error) setError('');
+            }}
+            rows={initialNote ? 5 : 3}
+            placeholder={t.editorContentPlaceholder}
+            className="w-full text-sm text-neutral-800 placeholder:text-neutral-400 bg-transparent border-none outline-none resize-y min-h-[72px]"
+          />
+        </>
       )}
 
       {error && (

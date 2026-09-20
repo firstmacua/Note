@@ -65,6 +65,20 @@ export interface Translations {
   workoutNotesPlaceholder: string;
   setsShort: string;
   repsShort: string;
+  // Idea AI Assistant translations
+  ideaAssistantTitle: string;
+  ideaAssistantSubtitle: string;
+  ideaInputPlaceholder: string;
+  ideaSendBtn: string;
+  ideaGenerating: string;
+  ideaSaveToNotes: string;
+  ideaSavedSuccess: string;
+  ideaPresetGift: string;
+  ideaPresetWeekend: string;
+  ideaPresetBusiness: string;
+  ideaClearChat: string;
+  ideaToggleOpen: string;
+  ideaRetryBtn: string;
   // Card
   cardJustNow: string;
   cardGuest: string;
@@ -92,9 +106,9 @@ export interface Translations {
     'Загальне': string;
     'Робота': string;
     'Ідеї': string;
-    'Особисте': string;
     'Покупки': string;
     'Тренування': string;
+    'Особисте'?: string;
     'Тренировка'?: string;
     'Workout'?: string;
     'Общее'?: string;
@@ -190,6 +204,19 @@ export const translations: Record<Language, Translations> = {
     workoutNotesPlaceholder: 'Додаткові примітки до тренування (необовʼязково)...',
     setsShort: 'підх.',
     repsShort: 'повт.',
+    ideaAssistantTitle: 'ШІ-генератор ідей',
+    ideaAssistantSubtitle: 'Введіть запит або ключові слова, щоб отримати готові варіанти та зберегти їх у нотатки',
+    ideaInputPlaceholder: 'Наприклад: що подарувати татові на день народження...',
+    ideaSendBtn: 'Знайти ідеї',
+    ideaGenerating: 'Генерую ідеї...',
+    ideaSaveToNotes: 'Додати в нотатки',
+    ideaSavedSuccess: 'Додано в нотатки!',
+    ideaPresetGift: '🎁 Що подарувати татові на день народження',
+    ideaPresetWeekend: '🏖️ Чим зайнятися на вихідних',
+    ideaPresetBusiness: '💡 Ідеї для нового проєкту',
+    ideaClearChat: 'Очистити чат',
+    ideaToggleOpen: '💡 ШІ-генератор ідей',
+    ideaRetryBtn: 'Спробувати знову',
     cardJustNow: 'Щойно',
     cardGuest: 'Гість',
     cardPublicBadge: 'Загальна',
@@ -294,6 +321,19 @@ export const translations: Record<Language, Translations> = {
     workoutNotesPlaceholder: 'Additional workout notes (optional)...',
     setsShort: 'sets',
     repsShort: 'reps',
+    ideaAssistantTitle: 'AI Idea Generator',
+    ideaAssistantSubtitle: 'Enter a prompt or keywords to get instant ideas and save them to notes',
+    ideaInputPlaceholder: 'e.g., what to gift dad for his birthday...',
+    ideaSendBtn: 'Find Ideas',
+    ideaGenerating: 'Generating ideas...',
+    ideaSaveToNotes: 'Save as Note',
+    ideaSavedSuccess: 'Added to notes!',
+    ideaPresetGift: '🎁 What to gift dad for his birthday',
+    ideaPresetWeekend: '🏖️ Things to do this weekend',
+    ideaPresetBusiness: '💡 New project ideas',
+    ideaClearChat: 'Clear chat',
+    ideaToggleOpen: '💡 AI Idea Generator',
+    ideaRetryBtn: 'Try again',
     cardJustNow: 'Just now',
     cardGuest: 'Guest',
     cardPublicBadge: 'Public',

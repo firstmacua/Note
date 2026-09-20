@@ -1,13 +1,13 @@
 import { Note, NoteCategory } from './types';
 
-export const CATEGORIES: NoteCategory[] = ['Загальне', 'Робота', 'Ідеї', 'Особисте', 'Покупки', 'Тренування'];
+export const CATEGORIES: NoteCategory[] = ['Загальне', 'Робота', 'Ідеї', 'Покупки', 'Тренування'];
 
 export const INITIAL_NOTES: Note[] = [
   {
     id: 'note-1',
     title: 'Плани на тиждень',
     content: '1. Завершити звіт по проєкту\n2. Записатися на масаж у четвер\n3. Замовити нові книги по дизайну',
-    category: 'Особисте',
+    category: 'Загальне',
     isPinned: true,
     createdAt: Date.now() - 3600000 * 24,
     updatedAt: Date.now() - 3600000 * 24,
