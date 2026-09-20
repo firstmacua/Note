@@ -28,6 +28,7 @@ export interface Note {
   authorName?: string;
   authorId?: string;
   exercises?: WorkoutExercise[];
+  reminderAt?: number;
 }
 
 export type CategoryFilter = 'all' | string;

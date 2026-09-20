@@ -76,6 +76,25 @@ export interface Translations {
   cardEdit: string;
   cardDelete: string;
   cardShare: string;
+  cardReminder: string;
+  // Reminder & Calendar modal
+  reminderModalTitle: string;
+  reminderModalSubtitle: string;
+  reminderDateTimeLabel: string;
+  reminderQuickIn1h: string;
+  reminderQuickTonight: string;
+  reminderQuickTomorrow: string;
+  reminderQuickIn2Days: string;
+  reminderBtnGoogle: string;
+  reminderBtnPhoneIcs: string;
+  reminderSaveToNote: string;
+  reminderRemoveFromNote: string;
+  reminderSavedSuccess: string;
+  reminderRemovedSuccess: string;
+  reminderBadgePrefix: string;
+  reminderUpcoming: string;
+  reminderOverdue: string;
+  reminderCalendarHint: string;
   // Share modal
   shareTitle: string;
   shareSubtitle: string;
@@ -200,6 +219,24 @@ export const translations: Record<Language, Translations> = {
     cardEdit: 'Редагувати',
     cardDelete: 'Видалити',
     cardShare: 'Поділитися',
+    cardReminder: 'Нагадати в календарі',
+    reminderModalTitle: 'Нагадування в календар',
+    reminderModalSubtitle: 'Додайте нагадування у вбудований календар телефону або Google Календар зі звуковим сигналом',
+    reminderDateTimeLabel: 'Дата та час нагадування:',
+    reminderQuickIn1h: '+1 год',
+    reminderQuickTonight: 'Сьогодні о 19:00',
+    reminderQuickTomorrow: 'Завтра о 09:00',
+    reminderQuickIn2Days: 'Через 2 дні',
+    reminderBtnGoogle: 'Відкрити в Google Календарі',
+    reminderBtnPhoneIcs: 'Календар телефону (Apple / Android)',
+    reminderSaveToNote: 'Зберегти дату в нотатці',
+    reminderRemoveFromNote: 'Прибрати нагадування з нотатки',
+    reminderSavedSuccess: 'Нагадування збережено в нотатці!',
+    reminderRemovedSuccess: 'Нагадування видалено з нотатки',
+    reminderBadgePrefix: '⏰',
+    reminderUpcoming: 'Заплановано',
+    reminderOverdue: 'Минуло',
+    reminderCalendarHint: '💡 При відкритті файлу телефон автоматично запропонує «Додати в Календар» та увімкне системне сповіщення.',
     shareTitle: 'Поділитися нотаткою',
     shareSubtitle: 'Надішліть нотатку другу через месенджер або скопіюйте посилання',
     shareCopyText: 'Скопіювати текст',
@@ -304,6 +341,24 @@ export const translations: Record<Language, Translations> = {
     cardEdit: 'Edit',
     cardDelete: 'Delete',
     cardShare: 'Share',
+    cardReminder: 'Remind in calendar',
+    reminderModalTitle: 'Calendar Reminder',
+    reminderModalSubtitle: 'Add a reminder to your phone calendar or Google Calendar with an alarm',
+    reminderDateTimeLabel: 'Reminder date & time:',
+    reminderQuickIn1h: '+1 hr',
+    reminderQuickTonight: 'Tonight at 19:00',
+    reminderQuickTomorrow: 'Tomorrow at 09:00',
+    reminderQuickIn2Days: 'In 2 days',
+    reminderBtnGoogle: 'Open in Google Calendar',
+    reminderBtnPhoneIcs: 'Phone Calendar (Apple / Android)',
+    reminderSaveToNote: 'Save date to note',
+    reminderRemoveFromNote: 'Remove reminder from note',
+    reminderSavedSuccess: 'Reminder saved to note!',
+    reminderRemovedSuccess: 'Reminder removed from note',
+    reminderBadgePrefix: '⏰',
+    reminderUpcoming: 'Upcoming',
+    reminderOverdue: 'Past',
+    reminderCalendarHint: '💡 Opening this file prompts your phone to "Add to Calendar" with a native alarm notification.',
     shareTitle: 'Share Note',
     shareSubtitle: 'Send note to a friend via messenger or copy shareable link',
     shareCopyText: 'Copy text',

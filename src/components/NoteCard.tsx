@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Pin, Pencil, Trash2, Copy, Check, Share2, Globe, User as UserIcon } from 'lucide-react';
+import { Pin, Pencil, Trash2, Copy, Check, Share2, Globe, User as UserIcon, Bell } from 'lucide-react';
 import { Note } from '../types';
 import { Translations, Language } from '../translations';
+import { formatReminderDisplay } from '../utils/calendar';
 
 interface NoteCardProps {
   note: Note;
@@ -11,6 +12,7 @@ interface NoteCardProps {
   onEdit: (note: Note) => void;
   onDelete: (id: string) => void;
   onShare: (note: Note) => void;
+  onReminder: (note: Note) => void;
 }
 
 export const NoteCard: React.FC<NoteCardProps> = ({
@@ -21,6 +23,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({
   onEdit,
   onDelete,
   onShare,
+  onReminder,
 }) => {
   const [copied, setCopied] = useState(false);
 
@@ -152,6 +155,35 @@ export const NoteCard: React.FC<NoteCardProps> = ({
           </button>
         </div>
 
+        {/* Reminder Badge if set */}
+        {note.reminderAt ? (
+          <button
+            type="button"
+            id={`note-reminder-badge-${note.id}`}
+            onClick={() => onReminder(note)}
+            title={t.cardReminder}
+            className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg border transition-colors mb-3 max-w-full truncate ${
+              note.reminderAt < Date.now()
+                ? 'bg-neutral-100 text-neutral-500 border-neutral-200 hover:bg-neutral-200'
+                : 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100 shadow-2xs'
+            }`}
+          >
+            <Bell
+              className={`w-3.5 h-3.5 shrink-0 ${
+                note.reminderAt < Date.now() ? 'text-neutral-400' : 'text-amber-600'
+              }`}
+            />
+            <span className="truncate">
+              {formatReminderDisplay(note.reminderAt, currentLang)}
+            </span>
+            {note.reminderAt < Date.now() && (
+              <span className="text-[10px] text-neutral-400 font-normal">
+                ({t.reminderOverdue})
+              </span>
+            )}
+          </button>
+        ) : null}
+
         {/* Content */}
         {note.exercises && note.exercises.length > 0 ? (
           <div id={`note-exercises-${note.id}`} className="space-y-1.5 mb-4">
@@ -214,6 +246,24 @@ export const NoteCard: React.FC<NoteCardProps> = ({
         </div>
 
         <div className="flex items-center gap-1 opacity-90 group-hover:opacity-100 transition-opacity">
+          <button
+            id={`note-reminder-btn-${note.id}`}
+            type="button"
+            onClick={() => onReminder(note)}
+            title={t.cardReminder}
+            className={`p-1.5 rounded-md transition-colors ${
+              note.reminderAt
+                ? 'text-amber-600 bg-amber-50 hover:bg-amber-100'
+                : 'text-neutral-500 hover:text-amber-600 hover:bg-amber-50'
+            }`}
+          >
+            <Bell
+              className={`w-3.5 h-3.5 ${
+                note.reminderAt ? 'fill-amber-500 text-amber-600' : ''
+              }`}
+            />
+          </button>
+
           <button
             id={`note-share-btn-${note.id}`}
             type="button"

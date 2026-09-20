@@ -21,6 +21,7 @@ import { CATEGORIES, INITIAL_NOTES } from './data';
 import { NoteEditor } from './components/NoteEditor';
 import { NoteCard } from './components/NoteCard';
 import { ShareModal } from './components/ShareModal';
+import { CalendarReminderModal } from './components/CalendarReminderModal';
 import { CloudSyncBar } from './components/CloudSyncBar';
 import { CloudErrorBanner } from './components/CloudErrorBanner';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
@@ -100,6 +101,7 @@ export default function App() {
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [isEditorExpanded, setIsEditorExpanded] = useState(false);
   const [sharingNote, setSharingNote] = useState<Note | null>(null);
+  const [reminderNote, setReminderNote] = useState<Note | null>(null);
   const [receivedNote, setReceivedNote] = useState<{
     title: string;
     content: string;
@@ -182,6 +184,7 @@ export default function App() {
     isPublic: boolean;
     authorName: string;
     exercises?: WorkoutExercise[];
+    reminderAt?: number;
   }) => {
     const newNote: Note = {
       id: `note-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
@@ -192,6 +195,7 @@ export default function App() {
       isPublic: data.isPublic,
       authorName: data.authorName,
       exercises: data.exercises,
+      reminderAt: data.reminderAt,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -217,6 +221,7 @@ export default function App() {
     isPublic: boolean;
     authorName: string;
     exercises?: WorkoutExercise[];
+    reminderAt?: number;
   }) => {
     if (!editingNote) return;
 
@@ -229,6 +234,7 @@ export default function App() {
       isPublic: data.isPublic,
       authorName: data.authorName,
       exercises: data.exercises,
+      reminderAt: data.reminderAt,
       updatedAt: Date.now(),
     };
 
@@ -240,6 +246,27 @@ export default function App() {
     }
 
     setEditingNote(null);
+  };
+
+  const handleSaveReminder = (noteId: string, timestamp: number | undefined) => {
+    const target = currentNotesList.find((n) => n.id === noteId);
+    if (!target) return;
+    const updated: Note = {
+      ...target,
+      reminderAt: timestamp,
+      updatedAt: Date.now(),
+    };
+
+    if (target.isPublic) {
+      saveNote(updated);
+    } else {
+      setLocalNotes((prev) => prev.map((n) => (n.id === noteId ? updated : n)));
+      saveNote(updated);
+    }
+
+    if (reminderNote && reminderNote.id === noteId) {
+      setReminderNote(updated);
+    }
   };
 
   const handleTogglePin = (id: string) => {
@@ -628,6 +655,7 @@ export default function App() {
                 }}
                 onDelete={handleDeleteNote}
                 onShare={(n) => setSharingNote(n)}
+                onReminder={(n) => setReminderNote(n)}
               />
             ))}
           </section>
@@ -689,6 +717,17 @@ export default function App() {
         currentLang={currentLang}
         onClose={() => setSharingNote(null)}
       />
+
+      {/* Modal for Calendar Reminder */}
+      {reminderNote && (
+        <CalendarReminderModal
+          note={reminderNote}
+          t={t}
+          currentLang={currentLang}
+          onClose={() => setReminderNote(null)}
+          onSaveReminder={handleSaveReminder}
+        />
+      )}
     </div>
   );
 }

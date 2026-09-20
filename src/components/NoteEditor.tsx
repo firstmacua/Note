@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Check, X, Pin, Globe, Lock, Trash2, Dumbbell } from 'lucide-react';
+import { Plus, Check, X, Pin, Globe, Lock, Trash2, Dumbbell, Bell } from 'lucide-react';
 import { Note, NoteCategory, WorkoutExercise } from '../types';
 import { CATEGORIES } from '../data';
 import { Translations } from '../translations';
+import { formatReminderDisplay } from '../utils/calendar';
 
 interface NoteEditorProps {
   initialNote?: Note | null;
@@ -16,6 +17,7 @@ interface NoteEditorProps {
     isPublic: boolean;
     authorName: string;
     exercises?: WorkoutExercise[];
+    reminderAt?: number;
   }) => void;
   onCancel?: () => void;
 }
@@ -83,6 +85,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const [exercises, setExercises] = useState<WorkoutExercise[]>([createEmptyExercise()]);
   const [workoutNotes, setWorkoutNotes] = useState('');
   const [error, setError] = useState('');
+  const [reminderAt, setReminderAt] = useState<number | undefined>(initialNote?.reminderAt);
+  const [showReminderPicker, setShowReminderPicker] = useState(false);
 
   const isWorkoutCategory =
     category === 'Тренування' || category === 'Тренировка' || category === 'Workout';
@@ -96,6 +100,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       setIsPinned(initialNote.isPinned);
       setIsPublic(Boolean(initialNote.isPublic));
       setAuthorName(initialNote.authorName || '');
+      setReminderAt(initialNote.reminderAt);
+      setShowReminderPicker(Boolean(initialNote.reminderAt));
 
       const isWorkout =
         cat === 'Тренування' || cat === 'Тренировка' || cat === 'Workout';
@@ -120,6 +126,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       setIsPublic(defaultIsPublic);
       setExercises([createEmptyExercise()]);
       setWorkoutNotes('');
+      setReminderAt(undefined);
+      setShowReminderPicker(false);
       setError('');
     }
   }, [initialNote, defaultIsPublic]);
@@ -198,6 +206,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       isPublic,
       authorName: trimmedAuthor || t.cardGuest,
       exercises: finalExercises,
+      reminderAt,
     });
 
     if (!initialNote) {
@@ -206,6 +215,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       setIsPinned(false);
       setExercises([createEmptyExercise()]);
       setWorkoutNotes('');
+      setReminderAt(undefined);
+      setShowReminderPicker(false);
       setError('');
     }
   };
@@ -379,45 +390,125 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         </p>
       )}
 
-      {/* Guest author name field & Public/Private toggle */}
-      <div className="py-2.5 px-3 mb-3 rounded-lg bg-neutral-50 border border-neutral-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <button
-            type="button"
-            id="editor-visibility-toggle"
-            onClick={() => setIsPublic(!isPublic)}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md font-medium transition-colors ${
-              isPublic
-                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                : 'bg-neutral-200 text-neutral-700'
-            }`}
-          >
-            {isPublic ? (
-              <>
-                <Globe className="w-3.5 h-3.5 text-emerald-600" />
-                <span>{t.editorPublicLabel}</span>
-              </>
-            ) : (
-              <>
-                <Lock className="w-3.5 h-3.5 text-neutral-500" />
-                <span>{t.tabMy}</span>
-              </>
-            )}
-          </button>
+      {/* Guest author name field & Public/Private toggle & Reminder */}
+      <div className="py-2.5 px-3 mb-3 rounded-lg bg-neutral-50 border border-neutral-200/80 flex flex-col gap-2.5 text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              id="editor-visibility-toggle"
+              onClick={() => setIsPublic(!isPublic)}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md font-medium transition-colors ${
+                isPublic
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                  : 'bg-neutral-200 text-neutral-700'
+              }`}
+            >
+              {isPublic ? (
+                <>
+                  <Globe className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{t.editorPublicLabel}</span>
+                </>
+              ) : (
+                <>
+                  <Lock className="w-3.5 h-3.5 text-neutral-500" />
+                  <span>{t.tabMy}</span>
+                </>
+              )}
+            </button>
+
+            {/* Reminder in note toggle */}
+            <button
+              type="button"
+              id="editor-reminder-toggle"
+              onClick={() => {
+                if (!reminderAt && !showReminderPicker) {
+                  const d = new Date(Date.now() + 60 * 60 * 1000);
+                  d.setMinutes(Math.ceil(d.getMinutes() / 5) * 5, 0, 0);
+                  setReminderAt(d.getTime());
+                }
+                setShowReminderPicker(!showReminderPicker);
+              }}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md font-medium transition-colors ${
+                reminderAt
+                  ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                  : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+              }`}
+            >
+              <Bell
+                className={`w-3.5 h-3.5 ${
+                  reminderAt ? 'fill-amber-600 text-amber-600' : 'text-neutral-500'
+                }`}
+              />
+              <span>
+                {reminderAt
+                  ? `${t.reminderBadgePrefix} ${formatReminderDisplay(
+                      reminderAt,
+                      t.appName === 'MikeNote' && t.allCategories === 'Всі' ? 'uk' : 'en'
+                    )}`
+                  : t.cardReminder}
+              </span>
+            </button>
+          </div>
+
+          {isPublic && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-neutral-500 whitespace-nowrap">{t.editorAuthorLabel}:</span>
+              <input
+                type="text"
+                id="guest-author-input"
+                value={authorName}
+                onChange={(e) => setAuthorName(e.target.value)}
+                placeholder={t.editorAuthorPlaceholder}
+                maxLength={30}
+                className="bg-white px-2 py-1 rounded border border-neutral-300 text-xs text-neutral-900 outline-none focus:border-neutral-600 w-28 sm:w-36"
+              />
+            </div>
+          )}
         </div>
 
-        {isPublic && (
-          <div className="flex items-center gap-1.5 w-full sm:w-auto">
-            <span className="text-neutral-500 whitespace-nowrap">{t.editorAuthorLabel}:</span>
+        {/* Expanded reminder picker inside editor */}
+        {showReminderPicker && (
+          <div
+            id="editor-reminder-picker-panel"
+            className="pt-2 border-t border-neutral-200/70 flex flex-wrap items-center gap-2"
+          >
+            <span className="text-[11px] text-neutral-500 font-medium">
+              {t.reminderDateTimeLabel}
+            </span>
             <input
-              type="text"
-              id="guest-author-input"
-              value={authorName}
-              onChange={(e) => setAuthorName(e.target.value)}
-              placeholder={t.editorAuthorPlaceholder}
-              maxLength={30}
-              className="bg-white px-2 py-1 rounded border border-neutral-300 text-xs text-neutral-900 outline-none focus:border-neutral-600 w-28 sm:w-36"
+              type="datetime-local"
+              id="editor-reminder-datetime-input"
+              value={
+                reminderAt
+                  ? new Date(reminderAt - new Date().getTimezoneOffset() * 60000)
+                      .toISOString()
+                      .slice(0, 16)
+                  : ''
+              }
+              onChange={(e) => {
+                if (e.target.value) {
+                  const d = new Date(e.target.value);
+                  setReminderAt(d.getTime());
+                } else {
+                  setReminderAt(undefined);
+                }
+              }}
+              className="bg-white px-2.5 py-1 rounded-md border border-neutral-300 text-xs text-neutral-900 outline-none focus:border-neutral-800"
             />
+            {reminderAt && (
+              <button
+                type="button"
+                id="editor-clear-reminder-btn"
+                onClick={() => {
+                  setReminderAt(undefined);
+                  setShowReminderPicker(false);
+                }}
+                className="text-[11px] text-rose-600 hover:text-rose-700 font-medium px-1.5 py-0.5"
+              >
+                {t.reminderRemoveFromNote}
+              </button>
+            )}
           </div>
         )}
       </div>
